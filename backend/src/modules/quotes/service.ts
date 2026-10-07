@@ -7,16 +7,20 @@ import { HttpError } from '../../lib/http.js';
 import { computeTotals } from '../../lib/money.js';
 import { quoteAvailableMail } from '../../lib/emailTemplates.js';
 import { transitionRepair } from '../repairs/workflow.js';
+import { approvalUrl, issueLink } from './approval.js';
 
 type ItemInput = { type: 'LABOR' | 'PART' | 'OTHER'; description: string; quantity: number; unitPrice: number; taxRate: number };
 
-const versionInclude = { items: { orderBy: { position: 'asc' } } } as const satisfies Prisma.QuoteVersionInclude;
+const versionInclude = { items: { orderBy: { position: 'asc' } }, approval: true } as const satisfies Prisma.QuoteVersionInclude;
 type VersionRow = Prisma.QuoteVersionGetPayload<{ include: typeof versionInclude }>;
 
 const money = (d: Prisma.Decimal) => d.toFixed(2);
 const versionView = (v: VersionRow) => ({
   id: v.id, version: v.version, status: v.status, notes: v.notes, sentAt: v.sentAt, validUntil: v.validUntil, createdAt: v.createdAt,
   subtotal: money(v.subtotal), taxTotal: money(v.taxTotal), total: money(v.total),
+  approval: v.approval
+    ? { decision: v.approval.decision, decidedAt: v.approval.decidedAt, origin: v.approval.origin, ip: v.approval.ip, comment: v.approval.comment }
+    : null,
   items: v.items.map((i) => ({
     id: i.id, type: i.type, description: i.description, quantity: i.quantity.toFixed(2), unitPrice: money(i.unitPrice),
     taxRate: i.taxRate.toFixed(2), lineNet: money(i.lineNet), lineTax: money(i.lineTax),
@@ -137,6 +141,7 @@ export async function send(userId: number, role: string, repairId: number) {
   const sentAt = new Date();
   const validUntil = new Date(sentAt.getTime() + env.quote.validDays * 86_400_000);
 
+  let token = '';
   await transitionRepair({
     repairId, to: 'PRESUPUESTO_PENDIENTE_APROBACION', internal: true,
     actor: { userId, role, origin: 'STAFF' },
@@ -145,6 +150,7 @@ export async function send(userId: number, role: string, repairId: number) {
       // Condicionado al estado: un doble clic no envía dos veces.
       const r = await tx.quoteVersion.updateMany({ where: { id: cur.id, status: 'BORRADOR' }, data: { status: 'ENVIADO', sentAt, validUntil, sentById: userId } });
       if (r.count === 0) throw new HttpError(409, 'Esta versión ya fue enviada', 'QUOTE_LOCKED');
+      token = await issueLink(tx, cur.id, validUntil);
     },
   });
   await audit('QUOTE_SENT', 'Repair', repairId, userId, { version: cur.version, total: money(cur.total), validUntil });
@@ -152,7 +158,7 @@ export async function send(userId: number, role: string, repairId: number) {
   await sendEmail({
     to: repair.customer.email, type: 'QUOTE_AVAILABLE', entity: 'Repair', entityId: String(repairId),
     ...quoteAvailableMail(repair.customer.name, {
-      number: repair.number, tool: `${repair.tool.brand} ${repair.tool.model}`, total: money(cur.total), validUntil,
+      number: repair.number, tool: `${repair.tool.brand} ${repair.tool.model}`, total: money(cur.total), validUntil, approvalUrl: approvalUrl(token),
     }),
   });
   return getQuote(repairId);
@@ -173,8 +179,31 @@ export async function withdraw(userId: number, role: string, repairId: number, c
     inTx: async (tx) => {
       const r = await tx.quoteVersion.updateMany({ where: { id: cur.id, status: { in: ['ENVIADO', 'VENCIDO'] } }, data: { status: 'CANCELADO' } });
       if (r.count === 0) throw new HttpError(409, 'El presupuesto ya cambió de estado, recarga', 'STALE_STATE');
+      await tx.quoteLinkToken.updateMany({ where: { versionId: cur.id, usedAt: null }, data: { usedAt: new Date() } });
     },
   });
   await audit('QUOTE_WITHDRAWN', 'Repair', repairId, userId, { version: cur.version, comment });
+  return getQuote(repairId);
+}
+
+/** El enlace dura menos que el presupuesto: permite emitir uno nuevo (el anterior deja de valer) y reenviarlo. */
+export async function resendLink(userId: number, repairId: number) {
+  const repair = await loadRepair(repairId);
+  await expireDueQuotes();
+  const quote = await loadQuote(repairId);
+  if (!quote) throw new HttpError(404, 'Aún no hay presupuesto');
+  const cur = currentOf(quote);
+  if (cur.status !== 'ENVIADO' || !cur.validUntil || repair.status !== 'PRESUPUESTO_PENDIENTE_APROBACION') {
+    throw new HttpError(409, 'No hay un presupuesto pendiente de respuesta', 'NOTHING_PENDING');
+  }
+  if (!repair.customer.email) throw new HttpError(409, 'El cliente no tiene email', 'CUSTOMER_EMAIL_REQUIRED');
+  const token = await issueLink(prisma, cur.id, cur.validUntil);
+  await sendEmail({
+    to: repair.customer.email, type: 'QUOTE_AVAILABLE', entity: 'Repair', entityId: String(repairId),
+    ...quoteAvailableMail(repair.customer.name, {
+      number: repair.number, tool: `${repair.tool.brand} ${repair.tool.model}`, total: money(cur.total), validUntil: cur.validUntil, approvalUrl: approvalUrl(token),
+    }),
+  });
+  await audit('QUOTE_LINK_RESENT', 'Repair', repairId, userId, { version: cur.version });
   return getQuote(repairId);
 }

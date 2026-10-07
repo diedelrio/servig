@@ -6,6 +6,7 @@ import RepairsPage from './RepairsPage'
 import NewRepair from './NewRepair'
 import RepairDetail from './RepairDetail'
 import Receipt from './Receipt'
+import QuoteApproval from './QuoteApproval'
 import CustomersPage from './CustomersPage'
 import CustomerDetail from './CustomerDetail'
 
@@ -20,6 +21,7 @@ export default function App() {
       <Route path="/repairs/new" element={<AppLayout permission="repair:create"><NewRepair /></AppLayout>} />
       <Route path="/repairs/:id" element={<AppLayout permission="repair:read"><RepairDetail /></AppLayout>} />
       <Route path="/repairs/:id/receipt" element={<AppLayout permission="repair:read"><Receipt /></AppLayout>} />
+      <Route path="/quote-approval" element={<QuoteApproval />} />
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />
       <Route path="/verify-email" element={<VerifyEmail />} />

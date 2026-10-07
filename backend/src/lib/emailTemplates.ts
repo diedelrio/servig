@@ -39,7 +39,28 @@ export const quoteAvailableMail = (name: string, q: { number: string; tool: stri
     <p>No se realizará ninguna reparación sin su aprobación expresa.</p>`),
 });
 
-export const repairFinishedMail = (name: string, r: { number: string; tool: string }) => ({
+type Decision = 'APROBADO' | 'RECHAZADO';
+
+/** Confirmación al cliente de la decisión que acaba de registrar. */
+export const quoteDecisionMail = (name: string, q: { number: string; tool: string; total: string; decision: Decision }) => ({
+  subject: `Presupuesto ${q.decision === 'APROBADO' ? 'aprobado' : 'rechazado'} · ${q.number}`,
+  html: wrap(
+    q.decision === 'APROBADO'
+      ? `<p>Hola ${esc(name)}, hemos registrado su aprobación del presupuesto de ${esc(q.tool)} (${esc(q.number)}) por ${esc(q.total)} €.</p>
+         <p>Comenzaremos la reparación y le avisaremos cuando esté lista.</p>`
+      : `<p>Hola ${esc(name)}, hemos registrado que rechaza el presupuesto de ${esc(q.tool)} (${esc(q.number)}).</p>
+         <p>No se realizará ninguna reparación. Nos pondremos en contacto con usted para los siguientes pasos.</p>`,
+  ),
+});
+
+/** Aviso interno al técnico que envió el presupuesto. */
+export const staffQuoteDecisionMail = (name: string, q: { number: string; customer: string; total: string; decision: Decision; comment?: string | null }) => ({
+  subject: `El cliente ${q.decision === 'APROBADO' ? 'aprobó' : 'rechazó'} el presupuesto · ${q.number}`,
+  html: wrap(`<p>Hola ${esc(name)}, ${esc(q.customer)} ${q.decision === 'APROBADO' ? 'aprobó' : 'rechazó'} el presupuesto de ${esc(q.number)} (${esc(q.total)} €).</p>
+    ${q.comment ? `<p>Comentario del cliente: ${esc(q.comment)}</p>` : ''}`),
+});
+
+export const repairFinishedMail =(name: string, r: { number: string; tool: string }) => ({
   subject: `Reparación finalizada · ${r.number}`,
   html: wrap(`<p>Hola ${esc(name)}, la reparación de su ${esc(r.tool)} (${esc(r.number)}) ha finalizado.</p>
     <p>En breve le avisaremos cuando esté lista para retirar.</p>`),

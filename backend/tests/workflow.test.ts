@@ -10,6 +10,7 @@ vi.mock('../src/lib/email.js', () => ({
   }),
 }));
 
+const { cleanup } = await import('./cleanup.js');
 const { app } = await import('../src/app.js');
 const { prisma } = await import('../src/lib/prisma.js');
 const { hashPassword } = await import('../src/lib/security.js');
@@ -65,6 +66,14 @@ const statusOf = async (id: number) => (await prisma.repair.findUniqueOrThrow({ 
 const internal = (id: number, to: RepairStatus, origin: 'STAFF' | 'CUSTOMER_LINK', who: Staff) =>
   transitionRepair({ repairId: id, to, internal: true, actor: { userId: origin === 'STAFF' ? who.id : null, role: origin === 'STAFF' ? 'TECNICO' : null, origin } });
 
+/** Crea presupuesto + versión aprobada + registro de aprobación, y pasa la reparación a PRESUPUESTO_APROBADO como lo hace el flujo real. */
+async function approveFixture(repairId: number) {
+  const quote = await prisma.quote.create({ data: { repairId } });
+  const v = await prisma.quoteVersion.create({ data: { quoteId: quote.id, version: 1, status: 'APROBADO', createdById: tec.id, sentById: tec.id } });
+  await prisma.quoteApproval.create({ data: { versionId: v.id, decision: 'APROBADO', origin: 'CUSTOMER_LINK' } });
+  await internal(repairId, 'PRESUPUESTO_APROBADO', 'CUSTOMER_LINK', tec);
+}
+
 beforeAll(async () => {
   await new Promise<void>((r) => {
     server = app.listen(0, () => r());
@@ -78,24 +87,7 @@ beforeEach(() => {
 });
 
 afterAll(async () => {
-  const users = await prisma.user.findMany({ where: { email: { endsWith: DOMAIN } }, select: { id: true } });
-  const customers = await prisma.customer.findMany({ where: { email: { endsWith: DOMAIN } }, select: { id: true } });
-  const uIds = users.map((u) => u.id);
-  const repairs = await prisma.repair.findMany({
-    where: { OR: [{ customerId: { in: customers.map((c) => c.id) } }, { receivedById: { in: uIds } }] },
-    select: { id: true, customerId: true },
-  });
-  const rIds = repairs.map((r) => r.id);
-  const cIds = [...new Set([...customers.map((c) => c.id), ...repairs.map((r) => r.customerId)])];
-  await prisma.repairStatusHistory.deleteMany({ where: { repairId: { in: rIds } } });
-  await prisma.attachment.deleteMany({ where: { repairId: { in: rIds } } });
-  await prisma.repair.deleteMany({ where: { id: { in: rIds } } });
-  await prisma.tool.deleteMany({ where: { customerId: { in: cIds } } });
-  await prisma.customer.deleteMany({ where: { id: { in: cIds } } });
-  const where = { userId: { in: uIds } };
-  await prisma.refreshToken.deleteMany({ where });
-  await prisma.auditLog.deleteMany({ where });
-  await prisma.user.deleteMany({ where: { id: { in: uIds } } });
+  await cleanup(prisma, DOMAIN);
   server.close();
   await prisma.$disconnect();
 });
@@ -205,11 +197,24 @@ describe('flujo con la API', () => {
     await internal(r.id, 'PRESUPUESTO_PENDIENTE_APROBACION', 'STAFF', tec);
     // pendiente de aprobación: todavía no
     expect((await go(r.id, 'EN_REPARACION', tec)).status).toBe(409);
-    await internal(r.id, 'PRESUPUESTO_APROBADO', 'CUSTOMER_LINK', tec);
+    await approveFixture(r.id);
     const ok = await go(r.id, 'EN_REPARACION', tec);
     expect(ok.status).toBe(200);
     const h = await prisma.repairStatusHistory.findFirstOrThrow({ where: { repairId: r.id, toStatus: 'PRESUPUESTO_APROBADO' } });
     expect(h).toMatchObject({ origin: 'CUSTOMER_LINK', userId: null });
+  });
+
+  it('RN-01 explícita: sin registro de aprobación de la última versión no se repara, aunque el estado diga "aprobado"', async () => {
+    const r = await newRepair();
+    await go(r.id, 'EN_REVISION', tec);
+    await internal(r.id, 'PRESUPUESTO_PENDIENTE_APROBACION', 'STAFF', tec);
+    await internal(r.id, 'PRESUPUESTO_APROBADO', 'CUSTOMER_LINK', tec); // estado forzado, sin Quote ni QuoteApproval
+    for (const who of [tec, adm]) {
+      const res = await go(r.id, 'EN_REPARACION', who);
+      expect(res.status).toBe(409);
+      expect(res.json.code).toBe('QUOTE_REQUIRED');
+    }
+    expect(await statusOf(r.id)).toBe('PRESUPUESTO_APROBADO');
   });
 
   it('el personal no puede ejecutar por la API las transiciones internas, y el cliente no puede forzar otras', async () => {
@@ -246,7 +251,7 @@ describe('flujo con la API', () => {
     const r = await newRepair();
     await go(r.id, 'EN_REVISION', tec);
     await internal(r.id, 'PRESUPUESTO_PENDIENTE_APROBACION', 'STAFF', tec);
-    await internal(r.id, 'PRESUPUESTO_APROBADO', 'CUSTOMER_LINK', tec);
+    await approveFixture(r.id);
     expect((await go(r.id, 'PEDIDO_REPUESTOS_MARCA', tec)).status).toBe(200);
     expect((await go(r.id, 'EN_REPARACION', tec)).status).toBe(200);
   });

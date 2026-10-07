@@ -24,7 +24,10 @@ export const env = {
   quote: {
     defaultTaxRate: Number(process.env.DEFAULT_TAX_RATE ?? 21),
     validDays: Number(process.env.QUOTE_VALID_DAYS ?? 15),
+    approvalLinkDays: Number(process.env.APPROVAL_LINK_DAYS ?? 7),
   },
+  // Nº de proxys de confianza delante de la API (para registrar la IP real del cliente).
+  trustProxy: process.env.TRUST_PROXY ? Number(process.env.TRUST_PROXY) : false,
   business: {
     name: process.env.BUSINESS_NAME ?? 'Servig',
     address: process.env.BUSINESS_ADDRESS ?? '',

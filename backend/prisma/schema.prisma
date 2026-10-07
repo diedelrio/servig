@@ -79,6 +79,7 @@ model User {
   quotesSent      QuoteVersion[]           @relation("QuoteSentBy")
   customer        Customer?                @relation(fields: [customerId], references: [id])
   customerId      Int?
+  quoteApprovals  QuoteApproval[]
 }
 
 model EmailVerificationToken {
@@ -288,23 +289,25 @@ model Quote {
 }
 
 model QuoteVersion {
-  id          Int         @id @default(autoincrement())
+  id          Int              @id @default(autoincrement())
   quoteId     Int
-  quote       Quote       @relation(fields: [quoteId], references: [id])
+  quote       Quote            @relation(fields: [quoteId], references: [id])
   version     Int
-  status      QuoteStatus @default(BORRADOR)
+  status      QuoteStatus      @default(BORRADOR)
   notes       String?
-  subtotal    Decimal     @default(0) @db.Decimal(12, 2)
-  taxTotal    Decimal     @default(0) @db.Decimal(12, 2)
-  total       Decimal     @default(0) @db.Decimal(12, 2)
+  subtotal    Decimal          @default(0) @db.Decimal(12, 2)
+  taxTotal    Decimal          @default(0) @db.Decimal(12, 2)
+  total       Decimal          @default(0) @db.Decimal(12, 2)
   sentAt      DateTime?
   validUntil  DateTime?
   sentById    Int?
-  sentBy      User?       @relation("QuoteSentBy", fields: [sentById], references: [id])
+  sentBy      User?            @relation("QuoteSentBy", fields: [sentById], references: [id])
   createdById Int
-  createdBy   User        @relation("QuoteCreatedBy", fields: [createdById], references: [id])
-  createdAt   DateTime    @default(now())
+  createdBy   User             @relation("QuoteCreatedBy", fields: [createdById], references: [id])
+  createdAt   DateTime         @default(now())
   items       QuoteItem[]
+  linkTokens  QuoteLinkToken[]
+  approval    QuoteApproval?
 
   @@unique([quoteId, version])
 }
@@ -323,4 +326,37 @@ model QuoteItem {
   lineTax     Decimal       @db.Decimal(12, 2)
 
   @@index([versionId])
+}
+
+enum ApprovalDecision {
+  APROBADO
+  RECHAZADO
+}
+
+/// Enlace de un solo uso para que el cliente decida sin iniciar sesión. Solo se guarda el hash.
+model QuoteLinkToken {
+  id        Int          @id @default(autoincrement())
+  versionId Int
+  version   QuoteVersion @relation(fields: [versionId], references: [id])
+  tokenHash String       @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime     @default(now())
+
+  @@index([versionId])
+}
+
+/// Decisión del cliente sobre una versión concreta. Una por versión, nunca se edita.
+model QuoteApproval {
+  id        Int              @id @default(autoincrement())
+  versionId Int              @unique
+  version   QuoteVersion     @relation(fields: [versionId], references: [id])
+  decision  ApprovalDecision
+  decidedAt DateTime         @default(now())
+  origin    HistoryOrigin
+  ip        String?
+  userAgent String?
+  userId    Int?
+  user      User?            @relation(fields: [userId], references: [id])
+  comment   String?
 }

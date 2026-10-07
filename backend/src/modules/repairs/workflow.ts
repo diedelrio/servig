@@ -87,6 +87,8 @@ export async function transitionRepair(i: TransitionInput) {
   if (rule.onlyIfNoQuote && repair.requiresQuote) {
     throw new HttpError(409, 'Esta reparación requiere presupuesto aprobado antes de comenzar', 'QUOTE_REQUIRED');
   }
+  // RN-01: además del estado, debe existir la aprobación registrada de la ÚLTIMA versión del presupuesto.
+  if (i.to === 'EN_REPARACION' && repair.requiresQuote) await assertQuoteApproved(repair.id);
   const comment = i.comment?.trim() || null;
   if (rule.needsComment && !comment) throw new HttpError(400, 'Esta acción requiere un comentario', 'COMMENT_REQUIRED');
 
@@ -118,4 +120,12 @@ async function notifyCustomer(
     entityId: String(repair.id),
     ...mail(repair.customer.name, { number: repair.number, tool: `${repair.tool.brand} ${repair.tool.model}` }),
   });
+}
+
+async function assertQuoteApproved(repairId: number) {
+  const quote = await prisma.quote.findUnique({ where: { repairId }, include: { versions: { include: { approval: true } } } });
+  const cur = quote?.versions.find((v) => v.version === quote.currentVersion);
+  if (!cur || cur.status !== 'APROBADO' || cur.approval?.decision !== 'APROBADO') {
+    throw new HttpError(409, 'No hay una aprobación del cliente para la última versión del presupuesto', 'QUOTE_REQUIRED');
+  }
 }

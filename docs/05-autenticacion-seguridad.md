@@ -23,3 +23,10 @@ Modelo Role ↔ Permission en BD (`recurso:acción`), asignación por seed; midd
 
 ## Auditoría
 `AuditLog`: usuario, acción, entidad, id, fecha, datos relevantes.
+
+## Enlace de aprobación del presupuesto (Fase 7)
+- Token de 32 bytes aleatorios; en la base solo su SHA-256 (`QuoteLinkToken`). Atado a una versión concreta.
+- Vence a los `APPROVAL_LINK_DAYS` (7) sin pasar de `validUntil` del presupuesto. Un solo uso; reenviar emite uno nuevo e invalida el anterior.
+- La decisión es atómica: consume el enlace, cierra la versión, guarda `QuoteApproval` (decisión, fecha, origen, IP, navegador, comentario) y cambia el estado de la reparación en una transacción. Ante decisiones simultáneas gana una.
+- Detrás de un proxy hay que definir `TRUST_PROXY` para registrar la IP real.
+- RN-01 comprobada explícitamente: pasar a EN_REPARACION con presupuesto requerido exige `QuoteApproval = APROBADO` de la última versión, no solo el estado.

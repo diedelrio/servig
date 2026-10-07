@@ -10,9 +10,11 @@ import { usersRouter } from './modules/users/routes.js';
 import { customersRouter, toolsRouter } from './modules/customers/routes.js';
 import { repairsRouter } from './modules/repairs/routes.js';
 import { quotesRouter } from './modules/quotes/routes.js';
+import { publicQuoteRouter } from './modules/quotes/publicRoutes.js';
 
 export const app = express();
 
+app.set('trust proxy', env.trustProxy);
 app.use(helmet());
 app.use(cors({ origin: env.frontendUrl, credentials: true }));
 app.use(express.json());
@@ -29,6 +31,7 @@ app.use('/api/customers', customersRouter);
 app.use('/api/tools', toolsRouter);
 app.use('/api/repairs', repairsRouter);
 app.use('/api/repairs', quotesRouter);
+app.use('/api/public/quote-approval', publicQuoteRouter);
 
 app.use((err: Error, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
   if (err instanceof HttpError) {

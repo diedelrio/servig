@@ -51,6 +51,7 @@ type Item = { type: 'LABOR' | 'PART' | 'OTHER'; description: string; quantity: s
 type Version = {
   id: number; version: number; status: string; notes: string | null; sentAt: string | null; validUntil: string | null
   subtotal: string; taxTotal: string; total: string
+  approval: { decision: string; decidedAt: string; origin: string; ip: string | null; comment: string | null } | null
   items: { id: number; type: Item['type']; description: string; quantity: string; unitPrice: string; taxRate: string; lineNet: string; lineTax: string }[]
 }
 type QuoteResp = { quote: { currentVersion: number; status: string; versions: Version[] } | null; defaultTaxRate: number; validDays: number }
@@ -183,7 +184,15 @@ export function QuotePanel({ repair, onChange }: { repair: RepairFull; onChange:
         <div className="panel">
           <VersionTable v={cur} />
           {cur.notes && <p>Notas: {cur.notes}</p>}
+          {cur.approval && (
+            <p className={cur.approval.decision === 'APROBADO' ? 'ok' : 'error'}>
+              <b>{cur.approval.decision === 'APROBADO' ? 'Aprobado' : 'Rechazado'} por el cliente</b> el {fmtDateTime(cur.approval.decidedAt)} · {cur.approval.origin === 'CUSTOMER_LINK' ? 'enlace del correo' : 'portal'}{cur.approval.ip && ` · IP ${cur.approval.ip}`}{cur.approval.comment && ` · «${cur.approval.comment}»`}
+            </p>
+          )}
           {cur.sentAt && <p><small>Enviado el {fmtDateTime(cur.sentAt)}{cur.validUntil && ` · válido hasta ${new Date(cur.validUntil).toLocaleDateString()}`}</small></p>}
+          {canWithdraw && cur.status === 'ENVIADO' && !withdrawing && (
+            <button className="link" disabled={busy} onClick={() => run(() => api.post(`/repairs/${repair.id}/quote/resend-link`), 'Enlace reenviado al cliente.')}>Reenviar enlace al cliente</button>
+          )}
           {canWithdraw && (
             withdrawing ? (
               <div className="row">

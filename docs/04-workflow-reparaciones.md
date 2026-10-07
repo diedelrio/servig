@@ -35,4 +35,4 @@ NECESARIO → SOLICITADO → PEDIDO_A_MARCA → RECIBIDO → INSTALADO; CANCELAD
 - Comentario obligatorio: cancelar y "devolver sin reparar".
 - Correos al cliente: `REPARADO` (reparación finalizada) y `LISTO_PARA_RETIRAR`.
 - `GET /repairs/:id` devuelve `allowedTransitions` según el rol, que alimenta los botones del frontend.
-- Pendiente para la Fase 7: la transición a `EN_REPARACION` desde `PRESUPUESTO_APROBADO` se apoya en que ese estado solo lo fija la aprobación; al existir `QuoteApproval` se añadirá la comprobación explícita de la aprobación de la última versión.
+- RN-01 (Fase 7): además de la matriz, `transitionRepair` exige para `EN_REPARACION` con `requiresQuote` que exista `QuoteApproval` APROBADO de la última versión del presupuesto (`QUOTE_REQUIRED` si no).

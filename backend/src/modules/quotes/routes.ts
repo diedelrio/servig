@@ -26,6 +26,10 @@ quotesRouter.post('/:id/quote/send', requirePermission('quote:write'), async (re
   res.json(await s.send(req.user!.id, req.user!.role, id(req.params.id)));
 });
 
+quotesRouter.post('/:id/quote/resend-link', requirePermission('quote:write'), async (req, res) => {
+  res.json(await s.resendLink(req.user!.id, id(req.params.id)));
+});
+
 quotesRouter.post('/:id/quote/withdraw', requirePermission('quote:write'), validate(withdrawSchema), async (req, res) => {
   res.json(await s.withdraw(req.user!.id, req.user!.role, id(req.params.id), req.body.comment));
 });

@@ -10,6 +10,7 @@ vi.mock('../src/lib/email.js', () => ({
   }),
 }));
 
+const { cleanup } = await import('./cleanup.js');
 const { app } = await import('../src/app.js');
 const { prisma } = await import('../src/lib/prisma.js');
 const { hashPassword } = await import('../src/lib/security.js');
@@ -80,30 +81,7 @@ beforeEach(() => {
 });
 
 afterAll(async () => {
-  const users = await prisma.user.findMany({ where: { email: { endsWith: DOMAIN } }, select: { id: true } });
-  const customers = await prisma.customer.findMany({ where: { email: { endsWith: DOMAIN } }, select: { id: true } });
-  const uIds = users.map((u) => u.id);
-  const repairs = await prisma.repair.findMany({
-    where: { OR: [{ customerId: { in: customers.map((c) => c.id) } }, { receivedById: { in: uIds } }] },
-    select: { id: true, customerId: true },
-  });
-  const rIds = repairs.map((r) => r.id);
-  const cIds = [...new Set([...customers.map((c) => c.id), ...repairs.map((r) => r.customerId)])];
-  const quotes = await prisma.quote.findMany({ where: { repairId: { in: rIds } }, select: { id: true } });
-  const versions = await prisma.quoteVersion.findMany({ where: { quoteId: { in: quotes.map((q) => q.id) } }, select: { id: true } });
-  await prisma.quoteItem.deleteMany({ where: { versionId: { in: versions.map((v) => v.id) } } });
-  await prisma.quoteVersion.deleteMany({ where: { id: { in: versions.map((v) => v.id) } } });
-  await prisma.quote.deleteMany({ where: { id: { in: quotes.map((q) => q.id) } } });
-  await prisma.diagnosis.deleteMany({ where: { repairId: { in: rIds } } });
-  await prisma.repairStatusHistory.deleteMany({ where: { repairId: { in: rIds } } });
-  await prisma.attachment.deleteMany({ where: { repairId: { in: rIds } } });
-  await prisma.repair.deleteMany({ where: { id: { in: rIds } } });
-  await prisma.tool.deleteMany({ where: { customerId: { in: cIds } } });
-  await prisma.customer.deleteMany({ where: { id: { in: cIds } } });
-  const where = { userId: { in: uIds } };
-  await prisma.refreshToken.deleteMany({ where });
-  await prisma.auditLog.deleteMany({ where });
-  await prisma.user.deleteMany({ where: { id: { in: uIds } } });
+  await cleanup(prisma, DOMAIN);
   server.close();
   await prisma.$disconnect();
 });

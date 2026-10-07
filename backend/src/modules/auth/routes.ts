@@ -1,8 +1,8 @@
 import { Router } from 'express';
 import type { Response } from 'express';
-import { rateLimit } from 'express-rate-limit';
 import { env } from '../../lib/env.js';
 import { validate } from '../../lib/http.js';
+import { limit } from '../../lib/rateLimit.js';
 import { requireAuth } from '../../middleware/auth.js';
 import * as s from './service.js';
 import { emailOnlySchema, loginSchema, registerSchema, resetSchema, tokenSchema } from './schemas.js';
@@ -11,15 +11,6 @@ const COOKIE = 'refresh_token';
 const cookieOpts = { httpOnly: true, sameSite: 'lax', secure: env.isProd, path: '/api/auth', maxAge: 7 * 86_400_000 } as const;
 const setRefresh = (res: Response, t: string) => res.cookie(COOKIE, t, cookieOpts);
 
-const limit = (max: number, windowMin: number) =>
-  rateLimit({
-    windowMs: windowMin * 60_000,
-    limit: max,
-    standardHeaders: true,
-    legacyHeaders: false,
-    skip: () => env.isTest,
-    message: { error: 'Demasiados intentos, inténtalo más tarde' },
-  });
 const strict = limit(10, 60); // registro, reenvío y recuperación
 const loginLimit = limit(10, 15);
 

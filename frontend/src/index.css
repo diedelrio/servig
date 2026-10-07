@@ -100,3 +100,7 @@ button.danger { background: var(--danger); }
 .totals { margin: 10px 0; }
 details.panel summary { cursor: pointer; font-weight: 600; }
 h3 { font-size: 1rem; margin: 12px 0 6px; }
+
+.card.wide { max-width: 680px; }
+.muted { color: var(--muted); }
+.big { font-size: 1.15rem; font-weight: 600; }

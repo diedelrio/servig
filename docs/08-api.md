@@ -20,8 +20,12 @@ POST `/repairs/:id/spare-parts` · PATCH `/repair-spare-parts/:id` (fases poster
 POST `/repairs/:id/diagnosis` (TECNICO/ADMIN; entradas append-only, `visibleToCustomer` por defecto false)
 GET `/repairs/:id/quote` (quote + versiones + config) · PUT `/repairs/:id/quote` (crea v1 o reemplaza las líneas del borrador; solo EN_REVISION; el servidor calcula los importes) · POST `/repairs/:id/quote/send` (congela la versión, pasa a PRESUPUESTO_PENDIENTE_APROBACION y envía el correo, todo en una transacción) · POST `/repairs/:id/quote/withdraw` {comment} (cancela la versión enviada y vuelve a EN_REVISION) · POST `/repairs/:id/quote/new-version` (copia las líneas tras rechazo, retiro o vencimiento)
 
-## Aprobación
-GET `/public/quote-approval/:token` · POST `/public/quote-approval/:token/decision` · POST `/portal/quotes/:id/decision`
+## Aprobación del cliente (Fase 7)
+Públicos, sin sesión (límite 60 / 15 min por IP):
+GET `/public/quote-approval/:token` → vista del presupuesto y `state` (OPEN | DECIDED | WITHDRAWN | EXPIRED | REPLACED | LINK_EXPIRED); 404 si el token no existe. No expone email, teléfono ni dirección ni diagnósticos internos.
+POST `/public/quote-approval/:token/decision` {decision: APPROVE | REJECT, comment?} → 409 con `code` (ALREADY_DECIDED, QUOTE_EXPIRED, QUOTE_WITHDRAWN, LINK_EXPIRED, LINK_REPLACED) si ya no procede.
+Personal: POST `/repairs/:id/quote/resend-link` (emite enlace nuevo; el anterior deja de valer).
+El portal (Fase 9) usará el mismo núcleo `decideQuote` con origen CUSTOMER_PORTAL.
 
 ## Portal cliente
 GET `/portal/repairs` · GET `/portal/repairs/:id`
