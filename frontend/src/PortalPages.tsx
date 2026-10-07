@@ -8,7 +8,7 @@ import { ReceiptView, type ReceiptData } from './Receipt'
 import { Thumb } from './RepairDetail'
 import { STATUS_LABEL, fmtDateTime } from './status'
 
-type ListRow = { id: number; number: string; status: string; receivedAt: string; active: boolean; pendingQuote: boolean; tool: { type: string; brand: string; model: string } }
+export type ListRow = { id: number; number: string; status: string; receivedAt: string; active: boolean; pendingQuote: boolean; tool: { type: string; brand: string; model: string } }
 
 type Detail = {
   id: number; number: string; status: string; receivedAt: string; declaredFault: string; inWarranty: boolean
@@ -38,18 +38,21 @@ const QUOTE_LABEL: Record<string, string> = { ENVIADO: 'Pendiente de su respuest
 export const GROUPS = {
   abiertas: { label: 'Reparaciones abiertas', short: 'Abiertas', statuses: ['SOLICITADA', 'RECIBIDO', 'EN_REVISION'], hint: 'Solicitadas, recibidas y en revisión' },
   aprobar: { label: 'Presupuestos por aprobar', short: 'Por aprobar', statuses: ['PRESUPUESTO_PENDIENTE_APROBACION'], hint: 'Esperan su respuesta' },
+  reparacion: { label: 'Herramientas en reparación', short: 'En reparación', statuses: ['PRESUPUESTO_APROBADO', 'PEDIDO_REPUESTOS_MARCA', 'EN_REPARACION', 'REPARADO'], hint: 'Con presupuesto aprobado, en reparación' },
   retirar: { label: 'Para retirar', short: 'Para retirar', statuses: ['LISTO_PARA_RETIRAR'], hint: 'Ya puede pasar a buscarlas' },
 } as const
-type GroupKey = keyof typeof GROUPS
+export type GroupKey = keyof typeof GROUPS
+/** Tarjetas del inicio (la de «en reparación» vive en el perfil). */
+const HOME_GROUPS: GroupKey[] = ['abiertas', 'aprobar', 'retirar']
 
-function useRepairs() {
+export function useRepairs() {
   const [rows, setRows] = useState<ListRow[] | null>(null)
   const [error, setError] = useState('')
   useEffect(() => { api.get<ListRow[]>('/portal/repairs').then((r) => setRows(r.data)).catch((e) => setError(apiError(e).message)) }, [])
   return { rows, error }
 }
 
-const countOf = (rows: ListRow[], g: GroupKey) => rows.filter((r) => (GROUPS[g].statuses as readonly string[]).includes(r.status)).length
+export const countOf = (rows: ListRow[], g: GroupKey) => rows.filter((r) => (GROUPS[g].statuses as readonly string[]).includes(r.status)).length
 
 /** Inicio del portal: tres tarjetas con contadores; cada una lleva a la grilla ya filtrada. */
 export function PortalHome() {
@@ -57,13 +60,13 @@ export function PortalHome() {
   const { rows, error } = useRepairs()
   if (error) return <section><h1>Hola, {user?.firstName}</h1><p className="error">{error}</p></section>
   if (!rows) return <p>Cargando…</p>
-  const tone: Record<GroupKey, string> = { abiertas: '', aprobar: 'warn', retirar: 'good' }
+  const tone: Partial<Record<GroupKey, string>> = { abiertas: '', aprobar: 'warn', retirar: 'good' }
   return (
     <section>
       <h1 className="greeting">Hola, {user?.firstName}</h1>
       <p className="muted">Aquí puede seguir el estado de sus herramientas en el taller y pedir nuevas reparaciones.</p>
       <div className="tiles">
-        {(Object.keys(GROUPS) as GroupKey[]).map((g) => {
+        {HOME_GROUPS.map((g) => {
           const n = countOf(rows, g)
           return (
             <Link key={g} to={`/portal/reparaciones?grupo=${g}`} className={`tile ${n > 0 ? tone[g] : ''}`}>
@@ -81,7 +84,7 @@ export function PortalHome() {
 
 const TABS: { key: GroupKey | 'todas' | 'historial'; label: string }[] = [
   { key: 'todas', label: 'Todas' }, { key: 'abiertas', label: GROUPS.abiertas.short }, { key: 'aprobar', label: GROUPS.aprobar.short },
-  { key: 'retirar', label: GROUPS.retirar.short }, { key: 'historial', label: 'Historial' },
+  { key: 'reparacion', label: GROUPS.reparacion.short }, { key: 'retirar', label: GROUPS.retirar.short }, { key: 'historial', label: 'Historial' },
 ]
 
 /** Grilla de reparaciones con el filtro de la tarjeta elegida (?grupo=abiertas|aprobar|retirar|historial). */
