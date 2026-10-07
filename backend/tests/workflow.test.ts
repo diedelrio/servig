@@ -23,7 +23,7 @@ const DOMAIN = '@wf.local';
 const uniq = (p = 'w') => `test-${p}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}${DOMAIN}`;
 
 const STATES: RepairStatus[] = [
-  'RECIBIDO', 'EN_REVISION', 'PRESUPUESTO_PENDIENTE_APROBACION', 'PRESUPUESTO_APROBADO', 'PRESUPUESTO_RECHAZADO',
+  'SOLICITADA', 'RECIBIDO', 'EN_REVISION', 'PRESUPUESTO_PENDIENTE_APROBACION', 'PRESUPUESTO_APROBADO', 'PRESUPUESTO_RECHAZADO',
   'PEDIDO_REPUESTOS_MARCA', 'EN_REPARACION', 'REPARADO', 'LISTO_PARA_RETIRAR', 'ENTREGADO', 'CANCELADO',
 ];
 
@@ -93,9 +93,11 @@ afterAll(async () => {
 });
 
 describe('matriz de transiciones (pura)', () => {
-  it('permite exactamente las transiciones del doc 04 y ninguna más (121 pares)', () => {
+  it('permite exactamente las transiciones del doc 04 y ninguna más (144 pares)', () => {
     const allowed = new Set(RULES.map((r) => `${r.from}>${r.to}`));
     const expected = new Set([
+      'SOLICITADA>RECIBIDO',
+      'SOLICITADA>CANCELADO',
       'RECIBIDO>EN_REVISION',
       'EN_REVISION>PRESUPUESTO_PENDIENTE_APROBACION',
       'PRESUPUESTO_PENDIENTE_APROBACION>EN_REVISION',
@@ -118,7 +120,7 @@ describe('matriz de transiciones (pura)', () => {
       pairs++;
       expect(!!findRule(a, b)).toBe(expected.has(`${a}>${b}`));
     }
-    expect(pairs).toBe(121);
+    expect(pairs).toBe(144);
   });
 
   it('los estados finales no tienen salida', () => {

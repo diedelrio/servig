@@ -68,12 +68,15 @@ export default function RepairDetail() {
     load()
   }
 
+  const [reception, setReception] = useState({ visualState: '', accessories: '' })
   const transition = async (to: string, needsComment: boolean) => {
     setActionError('')
     if (needsComment && !comment.trim()) { setActionError('Esta acción requiere un comentario.'); return }
+    const receiving = to === 'RECIBIDO' && r?.status === 'SOLICITADA'
+    if (receiving && !reception.visualState.trim()) { setActionError('Describe el estado visual de la herramienta recibida.'); return }
     setBusy(true)
     try {
-      await api.post(`/repairs/${id}/transition`, { to, comment })
+      await api.post(`/repairs/${id}/transition`, { to, comment, ...(receiving ? { reception } : {}) })
       setComment('')
       load()
     } catch (e) { setActionError(apiError(e).message); load() } finally { setBusy(false) }
@@ -105,6 +108,17 @@ export default function RepairDetail() {
       {r.allowedTransitions.length > 0 && (
         <div className="panel">
           <h2>Acciones</h2>
+          {r.status === 'SOLICITADA' && (
+            <>
+              <p className="callout">Solicitud del cliente: la herramienta aún no está en el taller. Al recibirla, anota cómo llega.</p>
+              <label>Estado visual al recibirla (obligatorio)
+                <input value={reception.visualState} onChange={(e) => setReception({ ...reception, visualState: e.target.value })} maxLength={1000} />
+              </label>
+              <label>Accesorios
+                <input value={reception.accessories} onChange={(e) => setReception({ ...reception, accessories: e.target.value })} maxLength={1000} />
+              </label>
+            </>
+          )}
           <label>Comentario (obligatorio al cancelar o devolver sin reparar)
             <input value={comment} onChange={(e) => setComment(e.target.value)} maxLength={1000} />
           </label>

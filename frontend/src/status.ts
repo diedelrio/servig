@@ -1,4 +1,5 @@
 export const STATUS_LABEL: Record<string, string> = {
+  SOLICITADA: 'Solicitada',
   RECIBIDO: 'Recibido',
   EN_REVISION: 'En revisión',
   PRESUPUESTO_PENDIENTE_APROBACION: 'Presupuesto pendiente de aprobación',

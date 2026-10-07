@@ -18,8 +18,10 @@ export const createRepairSchema = z
 
 export const transitionSchema = z.object({
   to: z.enum([
-    'RECIBIDO', 'EN_REVISION', 'PRESUPUESTO_PENDIENTE_APROBACION', 'PRESUPUESTO_APROBADO', 'PRESUPUESTO_RECHAZADO',
+    'SOLICITADA', 'RECIBIDO', 'EN_REVISION', 'PRESUPUESTO_PENDIENTE_APROBACION', 'PRESUPUESTO_APROBADO', 'PRESUPUESTO_RECHAZADO',
     'PEDIDO_REPUESTOS_MARCA', 'EN_REPARACION', 'REPARADO', 'LISTO_PARA_RETIRAR', 'ENTREGADO', 'CANCELADO',
   ]),
   comment: z.string().trim().max(1000).optional(),
+  // Solo al registrar la recepción de una solicitud del cliente: lo que se observa al tener la herramienta delante.
+  reception: z.object({ visualState: z.string().trim().min(1, 'Describe el estado visual').max(1000), accessories: z.string().trim().max(1000).optional() }).optional(),
 });

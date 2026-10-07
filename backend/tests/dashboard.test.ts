@@ -183,7 +183,7 @@ describe('API del dashboard', () => {
       for (let i = 0; i < 3 && res.status === 500; i++) res = await api('/api/dashboard', { auth: who.token });
       expect(res.status).toBe(200);
       expect(Object.keys(res.json.counts).sort()).toEqual([
-        'approved', 'awaitingApproval', 'awaitingParts', 'inRepair', 'inReview', 'overdue', 'pendingQuote', 'readyForPickup', 'received', 'rejected', 'repaired',
+        'approved', 'awaitingApproval', 'awaitingParts', 'inRepair', 'inReview', 'overdue', 'pendingQuote', 'readyForPickup', 'received', 'rejected', 'repaired', 'requested',
       ]);
       expect(res.json.thresholds.EN_REPARACION).toBeGreaterThan(0);
     }

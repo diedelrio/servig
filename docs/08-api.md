@@ -47,3 +47,5 @@ GET `/search?q=` (requiere leer clientes, herramientas y reparaciones) → hasta
 GET `/repairs?filter=overdue|pendingQuote` se combina con `status` y `search`: es a donde llevan los contadores.
 
 Catálogos: GET `/catalogs` (permiso `tool:read`) · POST/PUT/DELETE `/catalogs/{brands,types}[/:id]` {name} · POST/PUT/DELETE `/catalogs/models[/:id]` {name, brandId, toolTypeId} (solo ADMIN). Las herramientas aceptan `modelId` en lugar de type/brand/model.
+
+Portal (nuevos): GET `/portal/tools` · POST `/portal/tools` (modelId o type/brand/model) · GET `/portal/catalogs` · POST `/portal/repairs` {toolId, declaredFault, notes?} → SOLICITADA · POST `/portal/repairs/:id/cancel`. El personal registra la recepción con POST `/repairs/:id/transition` {to:"RECIBIDO", reception:{visualState, accessories?}}.

@@ -204,6 +204,7 @@ model ToolModel {
 }
 
 enum RepairStatus {
+  SOLICITADA
   RECIBIDO
   EN_REVISION
   PRESUPUESTO_PENDIENTE_APROBACION

@@ -34,6 +34,9 @@ const NON_FINAL: RepairStatus[] = [
 ]
 
 export const RULES: Rule[] = [
+  // Pedido hecho por el cliente desde el portal: la herramienta todavía no llegó al taller.
+  { from: 'SOLICITADA', to: 'RECIBIDO', label: 'Registrar la recepción de la herramienta', actors: ['RECEPCION', 'ADMIN'] },
+  { from: 'SOLICITADA', to: 'CANCELADO', label: 'Cancelar solicitud', actors: ['ADMIN', 'RECEPCION', 'CUSTOMER'] },
   { from: 'RECIBIDO', to: 'EN_REVISION', label: 'Iniciar revisión', actors: TEC },
   { from: 'EN_REVISION', to: 'PRESUPUESTO_PENDIENTE_APROBACION', label: 'Enviar presupuesto', actors: TEC, internal: true },
   { from: 'EN_REVISION', to: 'EN_REPARACION', label: 'Comenzar reparación (garantía sin presupuesto)', actors: TEC, onlyIfNoQuote: true },

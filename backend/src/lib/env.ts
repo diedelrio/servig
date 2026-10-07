@@ -43,7 +43,7 @@ export const env = {
 
 function overdueDays(): Record<string, number> {
   const d: Record<string, number> = {
-    RECIBIDO: 3, EN_REVISION: 3, PRESUPUESTO_PENDIENTE_APROBACION: 7, PRESUPUESTO_APROBADO: 3, PRESUPUESTO_RECHAZADO: 7,
+    SOLICITADA: 7, RECIBIDO: 3, EN_REVISION: 3, PRESUPUESTO_PENDIENTE_APROBACION: 7, PRESUPUESTO_APROBADO: 3, PRESUPUESTO_RECHAZADO: 7,
     PEDIDO_REPUESTOS_MARCA: 7, EN_REPARACION: 5, REPARADO: 3, LISTO_PARA_RETIRAR: 7,
   };
   for (const pair of (process.env.OVERDUE_DAYS ?? '').split(',')) {

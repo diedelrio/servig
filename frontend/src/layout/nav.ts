@@ -1,5 +1,5 @@
 import type { IconType } from 'react-icons'
-import { FaClipboardCheck, FaCog, FaHome, FaBoxes, FaServer, FaSlidersH, FaTools, FaUserAlt, FaUsers, FaWrench } from 'react-icons/fa'
+import { FaClipboardCheck, FaPlusCircle, FaCog, FaHome, FaBoxes, FaServer, FaSlidersH, FaTools, FaUserAlt, FaUsers, FaWrench } from 'react-icons/fa'
 import { MdOutlineMarkEmailRead } from 'react-icons/md'
 
 export type NavItem = {
@@ -45,6 +45,7 @@ export const STAFF_NAV: (NavItem | NavGroup)[] = [
 export const CLIENT_NAV: NavItem[] = [
   { to: '/portal', label: 'Inicio', short: 'Inicio', icon: FaHome, end: true },
   { to: '/portal/reparaciones', label: 'Mis reparaciones', short: 'Reparaciones', icon: FaTools, activeWhen: ['/portal/reparaciones', '/portal/repairs'] },
+  { to: '/portal/nueva', label: 'Nueva solicitud', short: 'Nueva', icon: FaPlusCircle },
   { to: '/perfil', label: 'Mi perfil', short: 'Perfil', icon: FaUserAlt },
 ]
 

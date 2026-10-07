@@ -33,6 +33,10 @@ repairsRouter.post('/:id/transition', requirePermission('repair:transition'), va
     to: req.body.to,
     comment: req.body.comment,
     actor: { userId: req.user!.id, role: req.user!.role, origin: 'STAFF' },
+    // La regla SOLICITADA → RECIBIDO es la única que llega a RECIBIDO: aquí solo se completan los datos de la recepción.
+    inTx: req.body.to === 'RECIBIDO' && req.body.reception
+      ? async (tx) => { await tx.repair.update({ where: { id: num(req.params.id) }, data: { visualState: req.body.reception.visualState, accessories: req.body.reception.accessories || null } }); }
+      : undefined,
   });
   res.json(repair);
 });

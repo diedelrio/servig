@@ -44,6 +44,7 @@ export async function dashboard(scope: Scope = {}, thresholds?: Record<string, n
 
   return {
     counts: {
+      requested: by('SOLICITADA'),
       received: by('RECIBIDO'),
       inReview: by('EN_REVISION'),
       pendingQuote: open.filter((r) => r.status === 'EN_REVISION' && r.requiresQuote).length,

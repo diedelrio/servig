@@ -13,7 +13,9 @@ export type Catalogs = {
 
 const FREE = 'free'
 
-export function ToolForm({ tool, error, onSubmit, onCancel }: {
+export function ToolForm({ tool, error, onSubmit, onCancel, catalogPath = '/catalogs' }: {
+  /** Ruta del catálogo: el portal del cliente usa la suya (no tiene permisos de personal). */
+  catalogPath?: string
   tool?: Tool; error: ApiError | null; onSubmit: (d: Record<string, FormDataEntryValue | number>) => void; onCancel: () => void
 }) {
   const f = error?.fields ?? {}
@@ -22,13 +24,13 @@ export function ToolForm({ tool, error, onSubmit, onCancel }: {
   const [typeId, setTypeId] = useState('')
   const [modelId, setModelId] = useState('')
   useEffect(() => {
-    api.get<Catalogs>('/catalogs').then((r) => {
+    api.get<Catalogs>(catalogPath).then((r) => {
       setCat(r.data)
       const m = r.data.models.find((x) => x.id === tool?.modelId)
       if (m) { setBrandId(String(m.brandId)); setTypeId(String(m.toolTypeId)); setModelId(String(m.id)) }
       else if (tool) setModelId(FREE)
     }).catch(() => setModelId(FREE)) // sin catálogo disponible se escribe a mano
-  }, [tool])
+  }, [tool, catalogPath])
 
   const free = modelId === FREE || (cat !== null && !cat.models.length)
   const brandModels = cat?.models.filter((m) => String(m.brandId) === brandId) ?? []

@@ -250,7 +250,7 @@ describe('9-10. Resguardo y dashboard', () => {
   it('el dashboard refleja el estado del taller', async () => {
     const { counts } = await dashboard({ customerId: J.customerId });
     expect(counts).toMatchObject({ awaitingApproval: 1, readyForPickup: 0, overdue: 0 }); // una entregada y una esperando respuesta
-    expect(Object.keys(counts)).toHaveLength(11);
+    expect(Object.keys(counts)).toHaveLength(12);
   });
 });
 

@@ -4,6 +4,12 @@ import { HttpError } from '../../lib/http.js';
 import * as storage from '../../lib/storage.js';
 import { expireDueQuotes } from '../quotes/service.js';
 import { decideQuote } from '../quotes/approval.js';
+import { audit } from '../../lib/audit.js';
+import { sendEmail } from '../../lib/email.js';
+import { repairRequestedMail } from '../../lib/emailTemplates.js';
+import { createTool, listTools } from '../customers/service.js';
+import { nextNumber } from '../repairs/service.js';
+import { transitionRepair } from '../repairs/workflow.js';
 
 /**
  * Todo el portal consulta SIEMPRE filtrando por el cliente de la sesión. Un id ajeno responde 404 (igual que uno inexistente),
@@ -99,4 +105,52 @@ export async function decide(
   const cur = r.quote?.versions.find((v) => v.version === r.quote!.currentVersion);
   if (!cur) throw new HttpError(404, 'No hay un presupuesto para responder');
   return decideQuote({ versionId: cur.id, decision, origin: 'CUSTOMER_PORTAL', userId, ...meta });
+}
+
+// ---------- Pedidos nuevos del cliente ----------
+
+/** Herramientas del propio cliente (para elegir sobre cuál pide la reparación). */
+export async function myTools(customerId: number) {
+  return (await listTools({ customerId })).map((t) => ({ id: t.id, type: t.type, brand: t.brand, model: t.model, serialNumber: t.serialNumber }));
+}
+
+/** El cliente da de alta una herramienta suya (con el catálogo o con texto libre). Siempre queda a su nombre. */
+export async function addMyTool(userId: number, customerId: number, input: Record<string, unknown>) {
+  const t = await createTool(userId, { ...input, customerId });
+  return { id: t.id, type: t.type, brand: t.brand, model: t.model, serialNumber: t.serialNumber };
+}
+
+/**
+ * Pedido de reparación hecho por el propio cliente. Entra como SOLICITADA (la herramienta aún no está en el taller) y siempre
+ * requiere presupuesto: omitirlo (RN-02) solo lo decide el personal al recibirla. El taller la pasa a «Recibido» al recibir el equipo.
+ */
+export async function requestRepair(userId: number, customerId: number, i: { toolId: number; declaredFault: string; notes?: string }) {
+  const tool = await prisma.tool.findFirst({ where: { id: i.toolId, customerId }, include: { customer: true } });
+  if (!tool) throw new HttpError(404, 'Herramienta no encontrada'); // una ajena responde igual que una inexistente
+  const repair = await prisma.$transaction(async (tx) => {
+    const r = await tx.repair.create({
+      data: {
+        number: await nextNumber(tx), customerId, toolId: tool.id, declaredFault: i.declaredFault,
+        visualState: 'Pendiente de registrar al recibir la herramienta', notes: i.notes || null,
+        status: 'SOLICITADA', inWarranty: false, requiresQuote: true, receivedById: userId,
+      },
+    });
+    await tx.repairStatusHistory.create({ data: { repairId: r.id, fromStatus: null, toStatus: 'SOLICITADA', userId, comment: 'Solicitud del cliente', origin: 'CUSTOMER_PORTAL' } });
+    return r;
+  });
+  await audit('REPAIR_REQUESTED', 'Repair', repair.id, userId, { number: repair.number, toolId: tool.id, customerId });
+  if (tool.customer.email) {
+    await sendEmail({
+      to: tool.customer.email, type: 'REPAIR_REQUESTED', entity: 'Repair', entityId: String(repair.id),
+      ...repairRequestedMail(tool.customer.name, { number: repair.number, tool: `${tool.brand} ${tool.model}`, fault: i.declaredFault }),
+    });
+  }
+  return { id: repair.id, number: repair.number, status: repair.status };
+}
+
+/** El cliente puede retirar su solicitud mientras el taller no haya recibido la herramienta. */
+export async function cancelRequest(userId: number, customerId: number, id: number) {
+  await ownRepair(customerId, id);
+  await transitionRepair({ repairId: id, to: 'CANCELADO', actor: { userId, role: null, origin: 'CUSTOMER_PORTAL' }, comment: 'Cancelada por el cliente' });
+  return { id, status: 'CANCELADO' };
 }

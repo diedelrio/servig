@@ -29,7 +29,7 @@ export type SettingDef = {
 };
 
 const STATUS_ES: Record<string, string> = {
-  RECIBIDO: 'Recibido', EN_REVISION: 'En revisión', PRESUPUESTO_PENDIENTE_APROBACION: 'Presupuesto pendiente de aprobación',
+  SOLICITADA: 'Solicitada (a la espera de la herramienta)', RECIBIDO: 'Recibido', EN_REVISION: 'En revisión', PRESUPUESTO_PENDIENTE_APROBACION: 'Presupuesto pendiente de aprobación',
   PRESUPUESTO_APROBADO: 'Presupuesto aprobado', PRESUPUESTO_RECHAZADO: 'Presupuesto rechazado', PEDIDO_REPUESTOS_MARCA: 'Repuestos pedidos a la marca',
   EN_REPARACION: 'En reparación', REPARADO: 'Reparado', LISTO_PARA_RETIRAR: 'Listo para retirar',
 };

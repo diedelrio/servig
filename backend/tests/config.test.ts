@@ -77,7 +77,7 @@ describe('parámetros editables', () => {
     expect(groups.map((g) => g.group)).toEqual(expect.arrayContaining(['Presupuestos', 'Atrasos', 'Datos del taller']));
     const all = groups.flatMap((g) => g.items);
     // 3 de presupuestos + 9 umbrales + 4 datos del taller (+ el de pruebas)
-    expect(all.filter((i) => String(i.key).startsWith('overdue.'))).toHaveLength(9);
+    expect(all.filter((i) => String(i.key).startsWith('overdue.'))).toHaveLength(10);
     expect(all.map((i) => i.key)).toEqual(expect.arrayContaining(['quote.defaultTaxRate', 'quote.validDays', 'quote.approvalLinkDays', 'business.name', 'business.receiptTerms']));
     const tax = all.find((i) => i.key === 'quote.defaultTaxRate')!;
     expect(tax).toMatchObject({ kind: 'number', unit: '%', min: 0, max: 100, integer: false });
@@ -169,7 +169,7 @@ describe('parámetros editables', () => {
 describe('los parámetros se aplican de verdad', () => {
   it('umbrales de atraso: leen los de la configuración y se pueden sustituir', async () => {
     const t = await settings.overdueThresholds();
-    expect(Object.keys(t)).toHaveLength(9);
+    expect(Object.keys(t)).toHaveLength(10);
     expect(t).toMatchObject(Object.fromEntries(Object.entries(env.overdueDays)));
 
     // Una reparación lleva 2 días en reparación: con el umbral por defecto (5) no está atrasada; con 1 sí.
@@ -208,10 +208,10 @@ describe('los parámetros se aplican de verdad', () => {
 });
 
 describe('referencia: estados y flujo', () => {
-  it('muestra los 11 estados, los umbrales y la matriz real de transiciones', async () => {
+  it('muestra los 12 estados, los umbrales y la matriz real de transiciones', async () => {
     const w = (await api('/api/config/reference/workflow', { auth: adm.token })).json;
-    expect(w.statuses).toHaveLength(11);
-    expect(w.statuses.map((s: { status: string }) => s.status)[0]).toBe('RECIBIDO');
+    expect(w.statuses).toHaveLength(12);
+    expect(w.statuses.map((s: { status: string }) => s.status)[0]).toBe('SOLICITADA');
     expect(w.statuses.find((s: { status: string }) => s.status === 'EN_REPARACION')).toMatchObject({ final: false, overdueDays: expect.any(Number) });
     for (const s of ['ENTREGADO', 'CANCELADO']) expect(w.statuses.find((x: { status: string }) => x.status === s)).toMatchObject({ final: true, overdueDays: null });
     expect(w.transitions).toHaveLength(RULES.length);
@@ -262,8 +262,8 @@ describe('referencia: tablas y tipos de datos reales', () => {
   it('incluye los enumerados y las migraciones aplicadas, y ningún dato de las filas', async () => {
     const t = (await api('/api/config/reference/tables', { auth: adm.token })).json;
     const rs = t.enums.find((e: { name: string }) => e.name === 'RepairStatus');
-    expect(rs.values).toHaveLength(11);
-    expect(rs.values[0]).toBe('RECIBIDO');
+    expect(rs.values).toHaveLength(12);
+    expect(rs.values[0]).toBe('SOLICITADA');
     expect(t.enums.map((e: { name: string }) => e.name)).toEqual(expect.arrayContaining(['UserStatus', 'QuoteStatus', 'SparePartStatus', 'ApprovalDecision']));
     expect(t.migrations.length).toBeGreaterThanOrEqual(9);
     expect(t.migrations.some((m: { name: string; appliedAt: string | null }) => m.name.endsWith('_init') && m.appliedAt)).toBe(true);

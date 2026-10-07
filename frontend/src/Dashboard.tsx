@@ -4,7 +4,7 @@ import { api, apiError } from './api'
 import { STATUS_LABEL } from './status'
 
 type Data = {
-  counts: Record<'received' | 'inReview' | 'pendingQuote' | 'awaitingApproval' | 'approved' | 'awaitingParts' | 'inRepair' | 'readyForPickup' | 'overdue' | 'rejected' | 'repaired', number>
+  counts: Record<'requested' | 'received' | 'inReview' | 'pendingQuote' | 'awaitingApproval' | 'approved' | 'awaitingParts' | 'inRepair' | 'readyForPickup' | 'overdue' | 'rejected' | 'repaired', number>
   overdue: { id: number; number: string; status: string; customerName: string; tool: string; daysInStatus: number; thresholdDays: number }[]
   thresholds: Record<string, number>
 }
@@ -22,6 +22,7 @@ const TILES: { key: keyof Data['counts']; label: string; to: string; tone?: 'war
   { key: 'overdue', label: 'Atrasadas', to: '/repairs?filter=overdue', tone: 'bad' },
 ]
 const EXTRA: typeof TILES = [
+  { key: 'requested', label: 'Solicitadas por clientes (esperando la herramienta)', to: '/repairs?status=SOLICITADA', tone: 'warn' },
   { key: 'rejected', label: 'Rechazadas (decidir qué hacer)', to: '/repairs?status=PRESUPUESTO_RECHAZADO' },
   { key: 'repaired', label: 'Reparadas (falta avisar)', to: '/repairs?status=REPARADO' },
 ]

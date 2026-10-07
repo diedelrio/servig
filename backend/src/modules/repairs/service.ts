@@ -16,7 +16,7 @@ import { countPending } from '../spareparts/service.js';
 export const MAX_FILE_BYTES = 50 * 1024 * 1024;
 
 /** PREFIJO-AAAA-NNNNNN (prefijo y cifras configurables). El INSERT ... ON CONFLICT DO NOTHING + UPDATE evita fallos por carrera dentro de la transacción. */
-async function nextNumber(tx: Prisma.TransactionClient) {
+export async function nextNumber(tx: Prisma.TransactionClient) {
   const year = new Date().getFullYear();
   const prefix = await getValue('numbering.prefix');
   const key = `${prefix}-${year}`;
