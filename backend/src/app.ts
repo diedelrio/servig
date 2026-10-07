@@ -5,6 +5,7 @@ import cookieParser from 'cookie-parser';
 import { env } from './lib/env.js';
 import { prisma } from './lib/prisma.js';
 import { HttpError } from './lib/http.js';
+import { requestContext } from './lib/requestContext.js';
 import { authRouter } from './modules/auth/routes.js';
 import { usersRouter } from './modules/users/routes.js';
 import { customersRouter, toolsRouter } from './modules/customers/routes.js';
@@ -13,6 +14,7 @@ import { quotesRouter } from './modules/quotes/routes.js';
 import { publicQuoteRouter } from './modules/quotes/publicRoutes.js';
 import { partsRouter, repairPartsRouter } from './modules/spareparts/routes.js';
 import { portalRouter } from './modules/portal/routes.js';
+import { auditRouter, emailLogsRouter } from './modules/admin/routes.js';
 
 export const app = express();
 
@@ -21,6 +23,7 @@ app.use(helmet());
 app.use(cors({ origin: env.frontendUrl, credentials: true }));
 app.use(express.json());
 app.use(cookieParser());
+app.use(requestContext);
 
 app.get('/api/health', async (_req, res) => {
   await prisma.$queryRaw`SELECT 1`;
@@ -36,6 +39,8 @@ app.use('/api/repairs', quotesRouter);
 app.use('/api/repairs', repairPartsRouter);
 app.use('/api/spare-parts', partsRouter);
 app.use('/api/portal', portalRouter);
+app.use('/api/audit', auditRouter);
+app.use('/api/email-logs', emailLogsRouter);
 app.use('/api/public/quote-approval', publicQuoteRouter);
 
 app.use((err: Error, _req: express.Request, res: express.Response, _next: express.NextFunction) => {

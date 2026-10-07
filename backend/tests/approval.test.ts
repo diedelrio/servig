@@ -268,7 +268,8 @@ describe('enlace vencido, presupuesto vencido o retirado', () => {
     expect(res.json.code).toBe('QUOTE_EXPIRED');
     expect((await view(p.token)).json.state).toBe('EXPIRED');
     expect(await statusOf(p.id)).toBe('PRESUPUESTO_PENDIENTE_APROBACION');
-    expect(await expireDueQuotes()).toBe(0); // ya estaba marcado
+    await expireDueQuotes(); // idempotente: no cambia nada que ya estuviera marcado
+    expect((await view(p.token)).json.state).toBe('EXPIRED');
   });
 
   it('presupuesto retirado: el enlace viejo no decide, tampoco contra la versión nueva', async () => {

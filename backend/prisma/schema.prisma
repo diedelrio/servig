@@ -13,17 +13,23 @@ model Settings {
 }
 
 model EmailLog {
-  id        Int       @id @default(autoincrement())
-  to        String
-  type      String
-  subject   String
-  entity    String?
-  entityId  String?
-  status    String    @default("PENDING") // PENDING | SENT | FAILED
-  error     String?
-  attempts  Int       @default(0)
-  createdAt DateTime  @default(now())
-  sentAt    DateTime?
+  id            Int       @id @default(autoincrement())
+  to            String
+  type          String
+  subject       String
+  entity        String?
+  entityId      String?
+  status        String    @default("PENDING") // PENDING | SENT | FAILED
+  error         String?
+  attempts      Int       @default(0)
+  createdAt     DateTime  @default(now())
+  sentAt        DateTime?
+  /// Cuerpo guardado solo para correos sin enlaces de un solo uso (permite reintentar). Nunca para tokens.
+  html          String?
+  lastAttemptAt DateTime?
+
+  @@index([status, createdAt])
+  @@index([createdAt])
 }
 
 enum UserStatus {
@@ -124,6 +130,9 @@ model AuditLog {
   createdAt DateTime @default(now())
 
   @@index([entity, entityId])
+  @@index([createdAt])
+  @@index([userId])
+  @@index([action])
 }
 
 model Customer {

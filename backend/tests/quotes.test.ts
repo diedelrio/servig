@@ -338,7 +338,8 @@ describe('vencimiento', () => {
     await send(r.id);
     await prisma.quoteVersion.updateMany({ where: { quote: { repairId: r.id } }, data: { validUntil: new Date(Date.now() - 1000) } });
 
-    expect(await expireDueQuotes()).toBeGreaterThanOrEqual(1);
+    // El barrido es global: otro archivo de test puede haberlo ejecutado antes, así que se comprueba el resultado, no el conteo.
+    await expireDueQuotes();
     const q = await api(`/api/repairs/${r.id}/quote`, { auth: tec.token });
     expect(q.json.quote.status).toBe('VENCIDO');
 

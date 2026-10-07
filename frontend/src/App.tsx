@@ -7,7 +7,9 @@ import NewRepair from './NewRepair'
 import RepairDetail from './RepairDetail'
 import Receipt from './Receipt'
 import QuoteApproval from './QuoteApproval'
-import { PortalList, PortalReceipt, PortalRepair } from './PortalPages'
+import QuoteDocument from './QuoteDocument'
+import { AdminAudit, AdminEmails } from './AdminPages'
+import { PortalList, PortalQuotePrint, PortalReceipt, PortalRepair } from './PortalPages'
 import CustomersPage from './CustomersPage'
 import CustomerDetail from './CustomerDetail'
 
@@ -25,6 +27,10 @@ export default function App() {
       <Route path="/portal" element={<AppLayout role="CLIENTE"><PortalList /></AppLayout>} />
       <Route path="/portal/repairs/:id" element={<AppLayout role="CLIENTE"><PortalRepair /></AppLayout>} />
       <Route path="/portal/repairs/:id/receipt" element={<AppLayout role="CLIENTE"><PortalReceipt /></AppLayout>} />
+      <Route path="/repairs/:id/quote/print" element={<AppLayout permission="quote:read"><QuoteDocument /></AppLayout>} />
+      <Route path="/portal/repairs/:id/quote/print" element={<AppLayout role="CLIENTE"><PortalQuotePrint /></AppLayout>} />
+      <Route path="/admin/emails" element={<AppLayout permission="emaillog:read"><AdminEmails /></AppLayout>} />
+      <Route path="/admin/audit" element={<AppLayout permission="audit:read"><AdminAudit /></AppLayout>} />
       <Route path="/quote-approval" element={<QuoteApproval />} />
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />

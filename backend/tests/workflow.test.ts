@@ -315,7 +315,8 @@ describe('permisos por rol', () => {
 describe('concurrencia e integridad', () => {
   it('dos transiciones simultáneas desde el mismo estado: gana una, la otra recibe 409 y el historial queda coherente', async () => {
     const r = await newRepair();
-    const [a, b] = await Promise.all([go(r.id, 'EN_REVISION', tec), go(r.id, 'CANCELADO', rec, 'cancelada')]);
+    // Dos peticiones idénticas: sea cual sea el orden de llegada, solo una puede ganar.
+    const [a, b] = await Promise.all([go(r.id, 'EN_REVISION', tec), go(r.id, 'EN_REVISION', adm)]);
     const codes = [a.status, b.status].sort();
     expect(codes).toEqual([200, 409]);
     const h = await prisma.repairStatusHistory.findMany({ where: { repairId: r.id }, orderBy: { id: 'asc' } });

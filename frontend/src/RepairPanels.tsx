@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react'
+import { Link } from 'react-router-dom'
 import { api, apiError } from './api'
 import { useAuth } from './auth'
 import { fmtDateTime } from './status'
@@ -141,6 +142,7 @@ export function QuotePanel({ repair, onChange }: { repair: RepairFull; onChange:
     <>
       <div className="row between">
         <h2>Presupuesto {cur && <span className="badge">v{cur.version} · {QSTATUS[cur.status]}</span>}</h2>
+        {cur && <Link className="btn" to={`/repairs/${repair.id}/quote/print`}>Imprimir presupuesto</Link>}
         {canNewVersion && <button disabled={busy} onClick={() => run(() => api.post(`/repairs/${repair.id}/quote/new-version`), 'Nueva versión creada.')}>Crear nueva versión</button>}
       </div>
       {!repair.customer.email && editable && (

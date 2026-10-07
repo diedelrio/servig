@@ -8,7 +8,21 @@ import { STATUS_LABEL, fmtDateTime } from './status'
 
 type Customer = {
   id: number; name: string; taxId: string | null; email: string | null; phone: string | null; address: string | null; notes: string | null
-  createdAt: string; tools: Tool[]; repairs: { id: number; number: string; status: string; receivedAt: string; toolId: number; declaredFault: string }[]; portalUser: { email: string; status: string } | null
+  createdAt: string; quotes: { repairId: number; repairNumber: string; version: number; status: string; total: string; sentAt: string | null; current: boolean }[]; documents: { id: number; repairId: number; repairNumber: string; filename: string; mime: string; size: number; createdAt: string; visibleToCustomer: boolean }[]; tools: Tool[]; repairs: { id: number; number: string; status: string; receivedAt: string; toolId: number; declaredFault: string }[]; portalUser: { email: string; status: string } | null
+}
+
+const QSTATUS: Record<string, string> = { BORRADOR: 'Borrador', ENVIADO: 'Enviado', APROBADO: 'Aprobado', RECHAZADO: 'Rechazado', VENCIDO: 'Vencido', CANCELADO: 'Retirado' }
+const eur = (n: string) => `${Number(n).toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €`
+
+/** Los documentos requieren sesión, así que se descargan con el token y se abren como blob. */
+function OpenDoc({ repairId, doc }: { repairId: number; doc: { id: number; filename: string } }) {
+  const open = async () => {
+    const r = await api.get(`/repairs/${repairId}/attachments/${doc.id}`, { responseType: 'blob' })
+    const url = URL.createObjectURL(r.data)
+    window.open(url, '_blank', 'noopener')
+    setTimeout(() => URL.revokeObjectURL(url), 60_000)
+  }
+  return <button className="link" onClick={open}>{doc.filename}</button>
 }
 
 export default function CustomerDetail() {
@@ -119,6 +133,40 @@ export default function CustomerDetail() {
               </tr>
             ))}
             {!c.repairs.length && <tr><td colSpan={5}>Sin reparaciones</td></tr>}
+          </tbody>
+        </table>
+      </div>
+
+      <h2>Presupuestos</h2>
+      <div className="scroll">
+        <table>
+          <thead><tr><th>Reparación</th><th>Versión</th><th>Estado</th><th>Total</th><th>Enviado</th></tr></thead>
+          <tbody>
+            {c.quotes.map((q) => (
+              <tr key={`${q.repairId}-${q.version}`}>
+                <td><Link to={`/repairs/${q.repairId}`}>{q.repairNumber}</Link></td>
+                <td>v{q.version}{q.current && ' (vigente)'}</td><td>{QSTATUS[q.status]}</td><td>{eur(q.total)}</td>
+                <td>{q.sentAt ? fmtDateTime(q.sentAt) : '—'}</td>
+              </tr>
+            ))}
+            {!c.quotes.length && <tr><td colSpan={5}>Sin presupuestos</td></tr>}
+          </tbody>
+        </table>
+      </div>
+
+      <h2>Documentos</h2>
+      <div className="scroll">
+        <table>
+          <thead><tr><th>Archivo</th><th>Reparación</th><th>Fecha</th><th>Cliente lo ve</th></tr></thead>
+          <tbody>
+            {c.documents.map((d) => (
+              <tr key={d.id}>
+                <td><OpenDoc repairId={d.repairId} doc={d} /></td>
+                <td><Link to={`/repairs/${d.repairId}`}>{d.repairNumber}</Link></td>
+                <td>{fmtDateTime(d.createdAt)}</td><td>{d.visibleToCustomer ? 'Sí' : 'No'}</td>
+              </tr>
+            ))}
+            {!c.documents.length && <tr><td colSpan={4}>Sin documentos</td></tr>}
           </tbody>
         </table>
       </div>

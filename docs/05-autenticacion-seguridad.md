@@ -30,3 +30,11 @@ Modelo Role ↔ Permission en BD (`recurso:acción`), asignación por seed; midd
 - La decisión es atómica: consume el enlace, cierra la versión, guarda `QuoteApproval` (decisión, fecha, origen, IP, navegador, comentario) y cambia el estado de la reparación en una transacción. Ante decisiones simultáneas gana una.
 - Detrás de un proxy hay que definir `TRUST_PROXY` para registrar la IP real.
 - RN-01 comprobada explícitamente: pasar a EN_REPARACION con presupuesto requerido exige `QuoteApproval = APROBADO` de la última versión, no solo el estado.
+
+## Correos y auditoría (Fase 10)
+- **Correos con enlace de un solo uso** (`AUTH_VERIFY_EMAIL`, `AUTH_PASSWORD_RESET`, `AUTH_INVITE`, `QUOTE_AVAILABLE`): se envían, pero su **cuerpo no se guarda** en `EmailLog`, para que nadie con acceso al registro pueda usar los enlaces. Si fallan, la persona los vuelve a solicitar. El resto guarda el cuerpo para poder reintentar.
+- **Reintentos:** 3 intentos inmediatos al enviar (1 s y 3 s de espera) y, en segundo plano cada 5 min, hasta 5 intentos en total con espera creciente (5, 10, 20… min). El ADMIN puede reintentar a mano. La API del registro nunca devuelve el cuerpo.
+- **Proveedor desacoplado:** `Transport` en `lib/email.ts`; cambiar de SMTP a una API es implementar `send()` y llamar a `setTransport()`.
+- **Auditoría de autenticación:** `LOGIN`, `LOGIN_FAILED` (motivo: unknown_user, bad_password, disabled, unverified; con email intentado e IP, nunca la contraseña), `REFRESH_REUSE_DETECTED`, `REGISTER`, `EMAIL_VERIFIED`, `PASSWORD_RESET_REQUESTED`, `PASSWORD_CHANGED`.
+- **IP en toda la auditoría:** se toma de la petición en curso (`AsyncLocalStorage`), sin pasarla a mano. Detrás de un proxy hay que definir `TRUST_PROXY`.
+- Argon2id usa los parámetros por defecto en producción; en tests se abaratan (`NODE_ENV=test`) solo para que la suite no se sature.

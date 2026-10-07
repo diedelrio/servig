@@ -174,7 +174,8 @@ describe('flujo de estados del repuesto', () => {
   it('dos cambios simultáneos desde el mismo estado: gana uno', async () => {
     const id = await newRepair();
     const p = (await addPart(id)).json;
-    const [x, y] = await Promise.all([setStatus(p.id, 'SOLICITADO'), setStatus(p.id, 'CANCELADO')]);
+    // Dos peticiones idénticas: en cualquier orden solo una puede ganar (la otra ve "SOLICITADO → SOLICITADO" o un estado ya cambiado).
+    const [x, y] = await Promise.all([setStatus(p.id, 'SOLICITADO'), setStatus(p.id, 'SOLICITADO', adm)]);
     expect([x.status, y.status].sort()).toEqual([200, 409]);
   });
 });

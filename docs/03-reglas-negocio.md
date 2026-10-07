@@ -24,3 +24,5 @@
 - RN-22 El portal nunca muestra: diagnósticos no marcados como visibles, comentarios del historial, nombres del personal, costes o precios de repuestos, borradores o versiones retiradas del presupuesto, ni el email/teléfono/dirección de otros. Los repuestos se ven desde la aprobación del presupuesto y sin los cancelados.
 - RN-23 Los adjuntos son privados por defecto (`visibleToCustomer=false`); el personal decide cuáles ve el cliente. Un cliente no puede publicar adjuntos.
 - RN-24 Una cuenta CLIENTE sin cliente vinculado (su email no coincide con ninguna ficha) no ve nada y recibe un mensaje para contactar al taller; el vínculo es por email (RN-09).
+- RN-25 Los correos con enlace de un solo uso no conservan su cuerpo (ver doc 05). Los demás se reintentan hasta 5 veces. Todo envío, exitoso o no, queda en `EmailLog` con destinatario, tipo, asunto, entidad, fecha, resultado, error e intentos.
+- RN-26 La auditoría es de solo lectura y solo la consulta el ADMIN; registra usuario (o ninguno si actuó el cliente por enlace), acción, entidad, id, fecha, IP y datos relevantes.

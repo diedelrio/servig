@@ -36,6 +36,10 @@ export async function cleanup(prisma: PrismaClient, domain: string) {
   await prisma.emailVerificationToken.deleteMany({ where });
   await prisma.passwordResetToken.deleteMany({ where });
   await prisma.refreshToken.deleteMany({ where });
-  await prisma.auditLog.deleteMany({ where });
+  // También lo que no tiene usuario: decisiones por enlace sobre estas reparaciones e intentos de login con emails del dominio.
+  await prisma.auditLog.deleteMany({
+    where: { OR: [where, { entity: 'Repair', entityId: { in: rIds.map(String) } }, { data: { path: ['email'], string_contains: domain } }] },
+  });
+  await prisma.emailLog.deleteMany({ where: { to: { endsWith: domain } } });
   await prisma.user.deleteMany({ where: { id: { in: uIds } } });
 }

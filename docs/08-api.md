@@ -35,5 +35,9 @@ Requiere sesión de una cuenta CLIENTE vinculada a un cliente (403 `NO_CUSTOMER_
 GET `/portal/repairs` (activas e historial; `pendingQuote`) · GET `/portal/repairs/:id` (estado, línea de tiempo solo con estado y fecha, diagnósticos visibles, presupuesto vigente enviado con `canDecide`, repuestos sin importes, documentos visibles, datos del resguardo) · GET `/portal/repairs/:id/attachments/:attId` (solo los marcados visibles) · POST `/portal/repairs/:id/quote/decision` {decision, comment?} (mismo núcleo que el enlace, origen CUSTOMER_PORTAL con el usuario).
 Personal: PATCH `/repairs/:id/attachments/:attId` {visibleToCustomer} (permiso `repair:attach`).
 
+## Administración (Fase 10, solo ADMIN)
+GET `/audit?entity&entityId&action&userId&from&to&before&limit` (cursor por id, hasta 200 por página; `to` incluye todo el día) · GET `/audit/actions`
+GET `/email-logs?status&type&to&before&limit` (nunca devuelve el cuerpo; `canRetry` indica si se puede reenviar) · POST `/email-logs/:id/retry`
+
 ## Otros
-GET `/dashboard` · GET `/search?q=` · GET `/audit` (ADMIN) · GET `/email-logs` (ADMIN)
+GET `/dashboard` · GET `/search?q=` (Fase 11)

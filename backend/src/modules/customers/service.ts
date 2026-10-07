@@ -36,12 +36,32 @@ export async function getCustomer(id: number) {
     include: {
       tools: { orderBy: { createdAt: 'desc' } },
       users: { select: { id: true, email: true, status: true } },
-      repairs: { orderBy: { receivedAt: 'desc' }, select: { id: true, number: true, status: true, receivedAt: true, toolId: true, declaredFault: true } },
+      repairs: {
+        orderBy: { receivedAt: 'desc' },
+        select: {
+          id: true, number: true, status: true, receivedAt: true, toolId: true, declaredFault: true,
+          attachments: { orderBy: { createdAt: 'desc' }, select: { id: true, filename: true, mime: true, size: true, createdAt: true, visibleToCustomer: true } },
+          quote: { select: { currentVersion: true, versions: { orderBy: { version: 'asc' }, select: { version: true, status: true, total: true, sentAt: true } } } },
+        },
+      },
     },
   });
   if (!c) throw new HttpError(404, 'Cliente no encontrado');
-  const { users, tools, ...rest } = c;
-  return { ...rest, portalUser: users[0] ?? null, tools: tools.map(toolView) };
+  const { users, tools, repairs, ...rest } = c;
+  return {
+    ...rest,
+    portalUser: users[0] ?? null,
+    tools: tools.map(toolView),
+    repairs: repairs.map(({ attachments: _a, quote: _q, ...r }) => r),
+    // Presupuestos (todas las versiones) y documentos de todas sus reparaciones, para la ficha.
+    quotes: repairs.flatMap((r) =>
+      (r.quote?.versions ?? []).map((v) => ({
+        repairId: r.id, repairNumber: r.number, version: v.version, status: v.status, total: v.total.toFixed(2), sentAt: v.sentAt,
+        current: v.version === r.quote!.currentVersion,
+      })),
+    ),
+    documents: repairs.flatMap((r) => r.attachments.map((a) => ({ ...a, repairId: r.id, repairNumber: r.number }))),
+  };
 }
 
 export async function createCustomer(userId: number, input: Record<string, unknown>) {

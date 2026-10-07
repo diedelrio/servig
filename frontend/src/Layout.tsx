@@ -18,6 +18,8 @@ export function AppLayout({ permission, role, children }: { permission?: string;
           {can('repair:read') && <NavLink to="/repairs">Reparaciones</NavLink>}
           {can('customer:read') &&<NavLink to="/customers">Clientes</NavLink>}
           {can('user:read') && <NavLink to="/admin/users">Usuarios</NavLink>}
+          {can('emaillog:read') && <NavLink to="/admin/emails">Correos</NavLink>}
+          {can('audit:read') && <NavLink to="/admin/audit">Auditoría</NavLink>}
         </nav>
         <span className="who">{user.firstName} · {user.role}</span>
         <button className="link" onClick={logout}>Salir</button>

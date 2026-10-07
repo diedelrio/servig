@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { api, apiError } from './api'
 import { DecisionControls, QuoteTable, type QuoteItemView } from './QuoteDecision'
+import { QuoteDocumentView } from './QuoteDocument'
 import { ReceiptView, type ReceiptData } from './Receipt'
 import { Thumb } from './RepairDetail'
 import { STATUS_LABEL, fmtDateTime } from './status'
@@ -108,6 +109,7 @@ export function PortalRepair() {
           {q.decision && <p className={q.decision.decision === 'APROBADO' ? 'ok' : 'error'}>{q.decision.decision === 'APROBADO' ? 'Aprobado' : 'Rechazado'} el {fmtDateTime(q.decision.decidedAt)}.</p>}
           {q.status === 'VENCIDO' && <p>Este presupuesto venció. Contacte con el taller para solicitar uno nuevo.</p>}
           {error && <p className="error">{error}</p>}
+          <p><Link className="btn" to={`/portal/repairs/${d.id}/quote/print`}>Imprimir presupuesto</Link></p>
           {q.canDecide && <DecisionControls total={q.total} busy={busy} onDecide={decide} />}
         </>
       )}
@@ -158,3 +160,18 @@ export function PortalReceipt() {
   )
 }
 
+
+export function PortalQuotePrint() {
+  const id = Number(useParams().id)
+  const [d, setD] = useState<Detail | null>(null)
+  useEffect(() => { api.get<Detail>(`/portal/repairs/${id}`).then((r) => setD(r.data)).catch(() => {}) }, [id])
+  if (!d) return <p>Cargando…</p>
+  if (!d.quote) return <section><p>Esta reparación todavía no tiene un presupuesto disponible.</p><Link to={`/portal/repairs/${id}`}>Volver</Link></section>
+  return (
+    <QuoteDocumentView backTo={`/portal/repairs/${d.id}`} d={{
+      number: d.number, version: d.quote.version, status: d.quote.status, customerName: d.receipt.customer.name,
+      tool: `${d.tool.brand} ${d.tool.model}`, business: d.receipt.business, subtotal: d.quote.subtotal, taxTotal: d.quote.taxTotal,
+      total: d.quote.total, items: d.quote.items, notes: d.quote.notes, sentAt: null, validUntil: d.quote.validUntil,
+    }} />
+  )
+}

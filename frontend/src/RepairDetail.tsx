@@ -6,6 +6,7 @@ import { ORIGIN_LABEL, STATUS_LABEL, fmtDateTime } from './status'
 import type { Tool } from './ToolForm'
 import { DiagnosisPanel, QuotePanel } from './RepairPanels'
 import { SparePartsPanel } from './SparePartsPanel'
+import { RepairAudit } from './AdminPages'
 
 type Att = { id: number; filename: string; mime: string; size: number; createdAt: string; visibleToCustomer?: boolean }
 export type RepairFull = {
@@ -146,6 +147,7 @@ export default function RepairDetail() {
         ))}
         {!r.attachments.length && <p>Sin adjuntos.</p>}
       </div>
+      {can('audit:read') && <RepairAudit repairId={r.id} />}
     </section>
   )
 }

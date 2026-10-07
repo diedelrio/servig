@@ -86,8 +86,14 @@ export async function login(email: string, password: string, ip?: string) {
   const user = await prisma.user.findUnique({ where: { email }, include: userInclude });
   // Se verifica siempre un hash para que el tiempo no delate si el usuario existe.
   const ok = await verifyPassword(user?.passwordHash ?? DUMMY_HASH, password);
-  if (!user || !ok || user.status === 'DISABLED') throw new HttpError(401, 'Credenciales inválidas');
+  if (!user || !ok || user.status === 'DISABLED') {
+    // Para detectar intentos de fuerza bruta. Se guarda el email intentado, nunca la contraseña.
+    const reason = !user ? 'unknown_user' : !ok ? 'bad_password' : 'disabled';
+    await audit('LOGIN_FAILED', 'User', user?.id, user?.id ?? null, { email, reason }, ip);
+    throw new HttpError(401, 'Credenciales inválidas');
+  }
   if (user.status === 'PENDING_EMAIL_VERIFICATION') {
+    await audit('LOGIN_FAILED', 'User', user.id, user.id, { email, reason: 'unverified' }, ip);
     throw new HttpError(403, 'Debes confirmar tu email antes de iniciar sesión', 'EMAIL_NOT_VERIFIED');
   }
   await prisma.user.update({ where: { id: user.id }, data: { lastLoginAt: new Date() } });
@@ -102,6 +108,7 @@ export async function refresh(raw: string | undefined) {
   if (rec.revokedAt) {
     // Reutilización de un token ya rotado: posible robo, se cierran todas las sesiones.
     await prisma.refreshToken.updateMany({ where: { userId: rec.userId, revokedAt: null }, data: { revokedAt: new Date() } });
+    await audit('REFRESH_REUSE_DETECTED', 'User', rec.userId, rec.userId);
     throw new HttpError(401, 'No autenticado');
   }
   if (rec.expiresAt < new Date() || rec.user.status !== 'ACTIVE') throw new HttpError(401, 'No autenticado');
