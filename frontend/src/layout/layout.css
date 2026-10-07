@@ -107,9 +107,11 @@
 .admin-sidebar:hover .admin-sidebar__group { align-items: stretch; }
 .admin-sidebar__submenu { display: none; gap: 0.2rem; margin: 0.28rem 0 0.32rem 2.05rem; }
 .admin-sidebar:hover .admin-sidebar__submenu.open { display: grid; }
-.admin-sidebar__group-button { width: 100%; min-height: 0; border: 0; background: none; font: inherit; text-align: left; cursor: pointer; }
-.admin-sidebar__chevron { margin-left: auto; flex: none; opacity: 0; transition: transform 0.2s, opacity 0.2s; }
-.admin-sidebar:hover .admin-sidebar__chevron { opacity: 0.7; }
+/* La cabecera de grupo es un <button> con el mismo aspecto que un ítem: se anulan los estilos globales de button al pasar el ratón. */
+.admin-sidebar button.admin-sidebar__item:hover:not(:disabled) { background: var(--primary-soft); color: var(--primary); box-shadow: none; }
+.admin-sidebar button.admin-sidebar__item.active:hover:not(:disabled) { background: rgba(79, 70, 229, 0.15); }
+.admin-sidebar__chevron { display: none; margin-left: auto; flex: none; opacity: 0.7; transition: transform 0.2s; } /* oculta con la barra colapsada: no desplaza el ícono */
+.admin-sidebar:hover .admin-sidebar__chevron { display: block; }
 .admin-sidebar__chevron.open { transform: rotate(180deg); }
 .admin-sidebar__submenu-item {
   display: flex; align-items: center; padding: 0.48rem 0.65rem; border-radius: 10px;
