@@ -33,7 +33,11 @@ export async function listCustomers(search?: string) {
 export async function getCustomer(id: number) {
   const c = await prisma.customer.findUnique({
     where: { id },
-    include: { tools: { orderBy: { createdAt: 'desc' } }, users: { select: { id: true, email: true, status: true } } },
+    include: {
+      tools: { orderBy: { createdAt: 'desc' } },
+      users: { select: { id: true, email: true, status: true } },
+      repairs: { orderBy: { receivedAt: 'desc' }, select: { id: true, number: true, status: true, receivedAt: true, toolId: true, declaredFault: true } },
+    },
   });
   if (!c) throw new HttpError(404, 'Cliente no encontrado');
   const { users, tools, ...rest } = c;

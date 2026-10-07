@@ -11,7 +11,10 @@ GET `/customers?search` · POST `/customers` · GET `/customers/:id` (ficha con 
 GET `/tools?customerId&search` · POST `/tools` · GET/PATCH `/tools/:id` (el dueño no se cambia). Sin borrado en el MVP.
 
 ## Reparaciones
-GET/POST `/repairs` · GET `/repairs/:id` · POST `/repairs/:id/transition` · GET `/repairs/:id/receipt` (resguardo) · POST/GET `/repairs/:id/attachments` · POST `/repairs/:id/diagnosis` · POST `/repairs/:id/spare-parts` · PATCH `/repair-spare-parts/:id`
+GET `/repairs?search&status&customerId` · POST `/repairs` (recepción; el cliente se deriva de la herramienta) · GET `/repairs/:id` (con historial, adjuntos y datos del taller para el resguardo) · POST `/repairs/:id/transition` (Fase 5)
+POST `/repairs/:id/attachments` (cuerpo binario crudo, cabecera `x-filename`; JPG/PNG/WebP/PDF ≤ 10 MB, validado por contenido) · GET `/repairs/:id/attachments/:attId`
+El resguardo es la página `/repairs/:id/receipt` del frontend (imprimir o guardar como PDF desde el navegador).
+POST `/repairs/:id/diagnosis` · POST `/repairs/:id/spare-parts` · PATCH `/repair-spare-parts/:id` (fases posteriores)
 
 ## Presupuestos
 POST `/repairs/:id/quotes` · PUT `/quotes/:id` (borrador) · POST `/quotes/:id/send` · POST `/quotes/:id/new-version`

@@ -68,11 +68,14 @@ model User {
   role              Role       @relation(fields: [roleId], references: [id])
   createdAt         DateTime   @default(now())
 
-  emailTokens   EmailVerificationToken[]
-  resetTokens   PasswordResetToken[]
-  refreshTokens RefreshToken[]
-  customer      Customer?                @relation(fields: [customerId], references: [id])
-  customerId    Int?
+  emailTokens     EmailVerificationToken[]
+  resetTokens     PasswordResetToken[]
+  refreshTokens   RefreshToken[]
+  repairsReceived Repair[]
+  statusChanges   RepairStatusHistory[]
+  attachments     Attachment[]
+  customer        Customer?                @relation(fields: [customerId], references: [id])
+  customerId      Int?
 }
 
 model EmailVerificationToken {
@@ -129,8 +132,9 @@ model Customer {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  tools Tool[]
-  users User[] // cuentas del portal vinculadas
+  tools   Tool[]
+  users   User[] // cuentas del portal vinculadas
+  repairs Repair[]
 }
 
 model Tool {
@@ -148,5 +152,93 @@ model Tool {
   createdAt         DateTime  @default(now())
   updatedAt         DateTime  @updatedAt
 
+  repairs Repair[]
+
   @@index([customerId])
+}
+
+enum RepairStatus {
+  RECIBIDO
+  EN_REVISION
+  PRESUPUESTO_PENDIENTE_APROBACION
+  PRESUPUESTO_APROBADO
+  PRESUPUESTO_RECHAZADO
+  PEDIDO_REPUESTOS_MARCA
+  EN_REPARACION
+  REPARADO
+  LISTO_PARA_RETIRAR
+  ENTREGADO
+  CANCELADO
+}
+
+enum HistoryOrigin {
+  STAFF
+  CUSTOMER_LINK
+  CUSTOMER_PORTAL
+  SYSTEM
+}
+
+/// Contadores para numeración (clave p. ej. "REP-2026").
+model Counter {
+  key   String @id
+  value Int
+}
+
+model Repair {
+  id            Int          @id @default(autoincrement())
+  number        String       @unique
+  customerId    Int
+  customer      Customer     @relation(fields: [customerId], references: [id])
+  toolId        Int
+  tool          Tool         @relation(fields: [toolId], references: [id])
+  receivedAt    DateTime     @default(now())
+  declaredFault String
+  visualState   String
+  accessories   String?
+  inWarranty    Boolean      @default(false)
+  requiresQuote Boolean      @default(true)
+  notes         String?
+  status        RepairStatus @default(RECIBIDO)
+  receivedById  Int
+  receivedBy    User         @relation(fields: [receivedById], references: [id])
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+
+  history     RepairStatusHistory[]
+  attachments Attachment[]
+
+  @@index([customerId])
+  @@index([toolId])
+  @@index([status])
+}
+
+/// Solo se inserta: nunca se edita ni se borra.
+model RepairStatusHistory {
+  id         Int           @id @default(autoincrement())
+  repairId   Int
+  repair     Repair        @relation(fields: [repairId], references: [id])
+  fromStatus RepairStatus?
+  toStatus   RepairStatus
+  userId     Int?
+  user       User?         @relation(fields: [userId], references: [id])
+  comment    String?
+  origin     HistoryOrigin @default(STAFF)
+  createdAt  DateTime      @default(now())
+
+  @@index([repairId])
+}
+
+model Attachment {
+  id           Int      @id @default(autoincrement())
+  repairId     Int
+  repair       Repair   @relation(fields: [repairId], references: [id])
+  filename     String // nombre original, solo para mostrar
+  storageKey   String   @unique
+  mime         String
+  size         Int
+  uploadedById Int
+  uploadedBy   User     @relation(fields: [uploadedById], references: [id])
+  createdAt    DateTime @default(now())
+
+  @@index([repairId])
 }

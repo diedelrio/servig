@@ -57,3 +57,37 @@ textarea { padding: 10px; font: inherit; color: inherit; background: var(--bg); 
 .details dt { color: var(--muted); }
 .details dd { margin: 0; }
 h2 { font-size: 1.15rem; }
+
+.btn { display: inline-block; padding: 10px 14px; font-weight: 600; color: #fff; background: var(--primary); border-radius: 6px; text-decoration: none; cursor: pointer; }
+.block { display: block; text-align: left; width: 100%; padding: 8px 4px; }
+.grid1 { display: grid; gap: 12px; }
+.radio, .check { display: flex; align-items: center; gap: 8px; font-weight: 500; padding: 4px 0; }
+.radio input, .check input { width: auto; }
+.timeline { list-style: none; margin: 0 0 16px; padding: 0 0 0 14px; border-left: 2px solid var(--border); }
+.timeline li { margin: 0 0 12px; padding-left: 10px; }
+.thumbs { display: flex; flex-wrap: wrap; gap: 12px; }
+.thumb { margin: 0; width: 150px; }
+.thumb img { width: 150px; height: 110px; object-fit: cover; border-radius: 6px; border: 1px solid var(--border); }
+.thumb figcaption { font-size: .8rem; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* Resguardo */
+.receipt { max-width: 760px; margin: 0 auto; background: var(--surface); padding: 24px; border: 1px solid var(--border); border-radius: 10px; }
+.receipt header { text-align: center; margin-bottom: 12px; }
+.receipt header h1 { margin: 0; }
+.receipt .rnum { margin: 8px 0; }
+.rtable { width: 100%; border: 1px solid var(--border); }
+.rtable th { width: 30%; text-transform: none; font-size: .9rem; color: var(--text); background: var(--bg); white-space: normal; }
+.rtable td { white-space: normal; }
+.terms { font-size: .85rem; color: var(--muted); margin: 16px 0 48px; }
+.signatures { display: flex; justify-content: space-around; gap: 24px; text-align: center; font-size: .9rem; }
+.signatures div { flex: 1; }
+.signatures span { display: block; border-bottom: 1px solid var(--text); height: 48px; margin-bottom: 4px; }
+
+@media print {
+  .topbar, .noprint { display: none !important; }
+  body { background: #fff; color: #000; }
+  .page { padding: 0; max-width: none; }
+  .receipt { border: 0; padding: 0; background: #fff; color: #000; max-width: none; }
+  .rtable th { background: #eee; color: #000; }
+  .terms { color: #000; }
+}

@@ -1,0 +1,106 @@
+import { useCallback, useEffect, useState, type ChangeEvent } from 'react'
+import { Link, useLocation, useParams } from 'react-router-dom'
+import { api, apiError } from './api'
+import { useAuth } from './auth'
+import { ORIGIN_LABEL, STATUS_LABEL, fmtDateTime } from './status'
+import type { Tool } from './ToolForm'
+
+type Att = { id: number; filename: string; mime: string; size: number; createdAt: string }
+export type RepairFull = {
+  id: number; number: string; status: string; receivedAt: string; declaredFault: string; visualState: string
+  accessories: string | null; notes: string | null; inWarranty: boolean; requiresQuote: boolean
+  customer: { id: number; name: string; taxId: string | null; email: string | null; phone: string | null; address: string | null }
+  tool: Tool
+  receivedBy: { firstName: string; lastName: string }
+  history: { id: number; fromStatus: string | null; toStatus: string; createdAt: string; comment: string | null; origin: string; user: { firstName: string; lastName: string } | null }[]
+  attachments: Att[]
+  business: { name: string; address: string; phone: string; receiptTerms: string }
+}
+
+/** Los adjuntos requieren el token, así que se descargan como blob y no con <img src>. */
+function Thumb({ repairId, a }: { repairId: number; a: Att }) {
+  const [url, setUrl] = useState<string>()
+  useEffect(() => {
+    let revoke: string | undefined
+    api.get(`/repairs/${repairId}/attachments/${a.id}`, { responseType: 'blob' }).then((r) => { revoke = URL.createObjectURL(r.data); setUrl(revoke) }).catch(() => {})
+    return () => { if (revoke) URL.revokeObjectURL(revoke) }
+  }, [repairId, a.id])
+  const isImg = a.mime.startsWith('image/')
+  return (
+    <figure className="thumb">
+      {url && isImg && <a href={url} target="_blank" rel="noreferrer"><img src={url} alt={a.filename} /></a>}
+      {url && !isImg && <a href={url} target="_blank" rel="noreferrer">📄 Abrir PDF</a>}
+      <figcaption>{a.filename}</figcaption>
+    </figure>
+  )
+}
+
+export default function RepairDetail() {
+  const id = Number(useParams().id)
+  const { can } = useAuth()
+  const uploadErrors = (useLocation().state as { uploadErrors?: string[] } | null)?.uploadErrors ?? []
+  const [r, setR] = useState<RepairFull | null>(null)
+  const [missing, setMissing] = useState(false)
+  const [error, setError] = useState('')
+
+  const load = useCallback(() => {
+    api.get<RepairFull>(`/repairs/${id}`).then((x) => setR(x.data)).catch(() => setMissing(true))
+  }, [id])
+  useEffect(load, [load])
+
+  const upload = async (e: ChangeEvent<HTMLInputElement>) => {
+    setError('')
+    for (const f of Array.from(e.target.files ?? [])) {
+      try {
+        await api.post(`/repairs/${id}/attachments`, f, { headers: { 'Content-Type': 'application/octet-stream', 'x-filename': encodeURIComponent(f.name) } })
+      } catch (err) { setError(`${f.name}: ${apiError(err).message}`) }
+    }
+    e.target.value = ''
+    load()
+  }
+
+  if (missing) return <section><h1>Reparación no encontrada</h1><Link to="/repairs">Volver</Link></section>
+  if (!r) return <p>Cargando…</p>
+
+  return (
+    <section>
+      <p><Link to="/repairs">← Reparaciones</Link></p>
+      <div className="row between">
+        <h1>{r.number} <span className="badge">{STATUS_LABEL[r.status]}</span></h1>
+        <Link className="btn" to={`/repairs/${r.id}/receipt`}>Imprimir resguardo</Link>
+      </div>
+      {uploadErrors.length > 0 && <p className="error">No se pudieron subir: {uploadErrors.join('; ')}</p>}
+
+      <dl className="panel details">
+        <dt>Cliente</dt><dd><Link to={`/customers/${r.customer.id}`}>{r.customer.name}</Link> {r.customer.phone && `· ${r.customer.phone}`}</dd>
+        <dt>Herramienta</dt><dd>{r.tool.type} {r.tool.brand} {r.tool.model} {r.tool.serialNumber && `· S/N ${r.tool.serialNumber}`}</dd>
+        <dt>Recibida</dt><dd>{fmtDateTime(r.receivedAt)} por {r.receivedBy.firstName} {r.receivedBy.lastName}</dd>
+        <dt>Avería declarada</dt><dd>{r.declaredFault}</dd>
+        <dt>Estado visual</dt><dd>{r.visualState}</dd>
+        <dt>Accesorios</dt><dd>{r.accessories ?? '—'}</dd>
+        <dt>Garantía</dt><dd>{r.inWarranty ? 'Sí' : 'No'}{r.inWarranty && !r.requiresQuote && ' · sin presupuesto'}</dd>
+        <dt>Observaciones</dt><dd>{r.notes ?? '—'}</dd>
+      </dl>
+
+      <h2>Historial</h2>
+      <ol className="timeline">
+        {r.history.map((h) => (
+          <li key={h.id}>
+            <b>{STATUS_LABEL[h.toStatus]}</b> <small>{fmtDateTime(h.createdAt)}</small>
+            <div><small>{h.user ? `${h.user.firstName} ${h.user.lastName}` : ORIGIN_LABEL[h.origin]}{h.comment && ` · ${h.comment}`}</small></div>
+          </li>
+        ))}
+      </ol>
+
+      <div className="row between">
+        <h2>Fotos y documentos</h2>
+        {can('repair:attach') && <label className="btn">Agregar<input type="file" multiple hidden accept="image/jpeg,image/png,image/webp,application/pdf" onChange={upload} /></label>}
+      </div>
+      {error && <p className="error">{error}</p>}
+      <div className="thumbs">
+        {r.attachments.map((a) => <Thumb key={a.id} repairId={r.id} a={a} />)}
+        {!r.attachments.length && <p>Sin adjuntos.</p>}
+      </div>
+    </section>
+  )
+}

@@ -21,4 +21,12 @@ export const env = {
   },
   emailFrom: required('EMAIL_FROM'),
   uploadDir: process.env.UPLOAD_DIR ?? './uploads',
+  business: {
+    name: process.env.BUSINESS_NAME ?? 'Servig',
+    address: process.env.BUSINESS_ADDRESS ?? '',
+    phone: process.env.BUSINESS_PHONE ?? '',
+    receiptTerms:
+      process.env.RECEIPT_TERMS ??
+      'Conserve este resguardo: es necesario para retirar la herramienta. No se iniciará ninguna reparación que requiera presupuesto sin su aprobación expresa.',
+  },
 };

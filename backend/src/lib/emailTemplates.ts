@@ -1,28 +1,36 @@
 import { env } from './env.js';
 
+const esc = (v: string) => v.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]!);
 const wrap = (body: string) => `<div style="font-family:sans-serif;max-width:480px">${body}</div>`;
 const link = (path: string, token: string) => `${env.frontendUrl}${path}?token=${encodeURIComponent(token)}`;
 
 export const verifyEmailMail = (name: string, token: string) => ({
   subject: 'Confirma tu cuenta',
-  html: wrap(`<p>Hola ${name}, bienvenido. Para activar tu cuenta haz clic en el siguiente enlace:</p>
+  html: wrap(`<p>Hola ${esc(name)}, bienvenido. Para activar tu cuenta haz clic en el siguiente enlace:</p>
     <p><a href="${link('/verify-email', token)}">Activar cuenta</a></p><p>El enlace vence en 24 horas.</p>`),
 });
 
 export const resetPasswordMail = (name: string, token: string) => ({
   subject: 'Recupera tu contraseña',
-  html: wrap(`<p>Hola ${name}, recibimos una solicitud para restablecer tu contraseña:</p>
+  html: wrap(`<p>Hola ${esc(name)}, recibimos una solicitud para restablecer tu contraseña:</p>
     <p><a href="${link('/reset-password', token)}">Definir nueva contraseña</a></p>
     <p>El enlace vence en 1 hora. Si no fuiste tú, ignora este mensaje.</p>`),
 });
 
 export const inviteMail = (name: string, role: string, token: string) => ({
   subject: 'Te invitamos a Servig',
-  html: wrap(`<p>Hola ${name}, se creó tu cuenta con el rol <b>${role}</b>. Define tu contraseña para activarla:</p>
+  html: wrap(`<p>Hola ${esc(name)}, se creó tu cuenta con el rol <b>${esc(role)}</b>. Define tu contraseña para activarla:</p>
     <p><a href="${link('/reset-password', token)}">Definir contraseña</a></p><p>El enlace vence en 72 horas.</p>`),
 });
 
-export const passwordChangedMail =(name: string) => ({
+export const repairReceivedMail = (name: string, r: { number: string; tool: string; fault: string }) => ({
+  subject: `Herramienta recibida · ${r.number}`,
+  html: wrap(`<p>Hola ${esc(name)}, hemos recibido su herramienta para diagnóstico.</p>
+    <p><b>Reparación:</b> ${r.number}<br><b>Herramienta:</b> ${esc(r.tool)}<br><b>Avería declarada:</b> ${esc(r.fault)}</p>
+    <p>Le avisaremos cuando el presupuesto esté disponible. No se realizará ninguna reparación sin su aprobación.</p>`),
+});
+
+export const passwordChangedMail = (name: string) => ({
   subject: 'Tu contraseña fue cambiada',
-  html: wrap(`<p>Hola ${name}, tu contraseña se cambió correctamente. Si no fuiste tú, contacta con el taller.</p>`),
+  html: wrap(`<p>Hola ${esc(name)}, tu contraseña se cambió correctamente. Si no fuiste tú, contacta con el taller.</p>`),
 });

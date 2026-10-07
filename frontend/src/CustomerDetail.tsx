@@ -3,39 +3,12 @@ import { Link, useParams } from 'react-router-dom'
 import { api, apiError, type ApiError } from './api'
 import { useAuth } from './auth'
 import { CustomerFields } from './CustomersPage'
+import { ToolForm, type Tool } from './ToolForm'
+import { STATUS_LABEL, fmtDateTime } from './status'
 
-type Tool = {
-  id: number; type: string; brand: string; model: string; serialNumber: string | null
-  purchaseDate: string | null; warrantyExpiresAt: string | null; description: string | null; notes: string | null; warrantyActive: boolean
-}
 type Customer = {
   id: number; name: string; taxId: string | null; email: string | null; phone: string | null; address: string | null; notes: string | null
-  createdAt: string; tools: Tool[]; portalUser: { email: string; status: string } | null
-}
-
-function ToolForm({ tool, error, onSubmit, onCancel }: { tool?: Tool; error: ApiError | null; onSubmit: (d: Record<string, FormDataEntryValue>) => void; onCancel: () => void }) {
-  const f = error?.fields ?? {}
-  const field = (name: keyof Tool, label: string, type = 'text', required = false) => (
-    <label>{label}
-      <input name={name} type={type} required={required} defaultValue={(tool?.[name] as string | null) ?? ''} aria-invalid={!!f[name]} />
-      {f[name] && <small className="error">{f[name]}</small>}
-    </label>
-  )
-  const submit = (e: FormEvent<HTMLFormElement>) => { e.preventDefault(); onSubmit(Object.fromEntries(new FormData(e.currentTarget))) }
-  return (
-    <form className="panel grid2" onSubmit={submit}>
-      {field('type', 'Tipo (taladro, amoladora…)', 'text', true)}
-      {field('brand', 'Marca', 'text', true)}
-      {field('model', 'Modelo', 'text', true)}
-      {field('serialNumber', 'Número de serie')}
-      {field('purchaseDate', 'Fecha de compra', 'date')}
-      {field('warrantyExpiresAt', 'Vencimiento de garantía', 'date')}
-      {field('description', 'Descripción')}
-      {field('notes', 'Observaciones')}
-      {error && !Object.keys(f).length && <p className="error">{error.message}</p>}
-      <div className="row"><button>Guardar</button><button type="button" className="link" onClick={onCancel}>Cancelar</button></div>
-    </form>
-  )
+  createdAt: string; tools: Tool[]; repairs: { id: number; number: string; status: string; receivedAt: string; toolId: number; declaredFault: string }[]; portalUser: { email: string; status: string } | null
 }
 
 export default function CustomerDetail() {
@@ -61,6 +34,11 @@ export default function CustomerDetail() {
 
   if (missing) return <section><h1>Cliente no encontrado</h1><Link to="/customers">Volver</Link></section>
   if (!c) return <p>Cargando…</p>
+
+  const toolName = (toolId: number) => {
+    const t = c.tools.find((x) => x.id === toolId)
+    return t ? `${t.brand} ${t.model}` : '—'
+  }
 
   const saveCustomer = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault()
@@ -118,10 +96,29 @@ export default function CustomerDetail() {
               <tr key={t.id}>
                 <td>{t.type}</td><td>{t.brand}</td><td>{t.model}</td><td>{t.serialNumber ?? '—'}</td><td>{t.purchaseDate ?? '—'}</td>
                 <td>{t.warrantyExpiresAt ? <span className={`badge ${t.warrantyActive ? 'active' : 'disabled'}`}>{t.warrantyActive ? 'Vigente' : 'Vencida'} · {t.warrantyExpiresAt}</span> : '—'}</td>
-                <td className="actions">{can('tool:update') && <button className="link" onClick={() => { setToolForm(t.id); setError(null) }}>Editar</button>}</td>
+                <td className="actions">{can('repair:create') && <Link to={`/repairs/new?customerId=${c.id}&toolId=${t.id}`}>Recibir</Link>}{' '}{can('tool:update') && <button className="link" onClick={() => { setToolForm(t.id); setError(null) }}>Editar</button>}</td>
               </tr>
             ))}
             {!c.tools.length && <tr><td colSpan={7}>Sin herramientas registradas</td></tr>}
+          </tbody>
+        </table>
+      </div>
+
+      <h2>Reparaciones</h2>
+      <div className="scroll">
+        <table>
+          <thead><tr><th>Número</th><th>Fecha</th><th>Herramienta</th><th>Avería</th><th>Estado</th></tr></thead>
+          <tbody>
+            {c.repairs.map((r) => (
+              <tr key={r.id}>
+                <td><Link to={`/repairs/${r.id}`}>{r.number}</Link></td>
+                <td>{fmtDateTime(r.receivedAt)}</td>
+                <td>{toolName(r.toolId)}</td>
+                <td>{r.declaredFault.slice(0, 60)}</td>
+                <td>{STATUS_LABEL[r.status]}</td>
+              </tr>
+            ))}
+            {!c.repairs.length && <tr><td colSpan={5}>Sin reparaciones</td></tr>}
           </tbody>
         </table>
       </div>
