@@ -38,12 +38,13 @@ const QUOTE_LABEL: Record<string, string> = { ENVIADO: 'Pendiente de su respuest
 export const GROUPS = {
   abiertas: { label: 'Reparaciones abiertas', short: 'Abiertas', statuses: ['SOLICITADA', 'RECIBIDO', 'EN_REVISION'], hint: 'Solicitadas, recibidas y en revisión' },
   aprobar: { label: 'Presupuestos por aprobar', short: 'Por aprobar', statuses: ['PRESUPUESTO_PENDIENTE_APROBACION'], hint: 'Esperan su respuesta' },
-  reparacion: { label: 'Herramientas en reparación', short: 'En reparación', statuses: ['PRESUPUESTO_APROBADO', 'PEDIDO_REPUESTOS_MARCA', 'EN_REPARACION', 'REPARADO'], hint: 'Con presupuesto aprobado, en reparación' },
+  aprobados: { label: 'Presupuestos aprobados', short: 'Aprobados', statuses: ['PRESUPUESTO_APROBADO'], hint: 'Aprobados, a punto de empezar' },
+  reparacion: { label: 'Herramientas en reparación', short: 'En reparación', statuses: ['PEDIDO_REPUESTOS_MARCA', 'EN_REPARACION', 'REPARADO'], hint: 'Esperando repuestos, en reparación o reparadas' },
   retirar: { label: 'Para retirar', short: 'Para retirar', statuses: ['LISTO_PARA_RETIRAR'], hint: 'Ya puede pasar a buscarlas' },
 } as const
 export type GroupKey = keyof typeof GROUPS
-/** Tarjetas del inicio (la de «en reparación» vive en el perfil). */
-const HOME_GROUPS: GroupKey[] = ['abiertas', 'aprobar', 'retirar']
+/** Tarjetas del inicio, en el orden del proceso. */
+const HOME_GROUPS: GroupKey[] = ['abiertas', 'aprobar', 'aprobados', 'reparacion', 'retirar']
 
 export function useRepairs() {
   const [rows, setRows] = useState<ListRow[] | null>(null)
@@ -84,7 +85,7 @@ export function PortalHome() {
 
 const TABS: { key: GroupKey | 'todas' | 'historial'; label: string }[] = [
   { key: 'todas', label: 'Todas' }, { key: 'abiertas', label: GROUPS.abiertas.short }, { key: 'aprobar', label: GROUPS.aprobar.short },
-  { key: 'reparacion', label: GROUPS.reparacion.short }, { key: 'retirar', label: GROUPS.retirar.short }, { key: 'historial', label: 'Historial' },
+  { key: 'aprobados', label: GROUPS.aprobados.short }, { key: 'reparacion', label: GROUPS.reparacion.short }, { key: 'retirar', label: GROUPS.retirar.short }, { key: 'historial', label: 'Historial' },
 ]
 
 /** Grilla de reparaciones con el filtro de la tarjeta elegida (?grupo=abiertas|aprobar|retirar|historial). */
