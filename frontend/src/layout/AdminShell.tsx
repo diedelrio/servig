@@ -61,7 +61,7 @@ function AdminHeader() {
   return (
     <header className="admin-header">
       <div className="admin-header__brand" role="link" tabIndex={0} onClick={() => nav('/')} onKeyDown={(e) => e.key === 'Enter' && nav('/')}>
-        <img className="admin-header__logo" src="/logo.svg" alt="" />
+        <img className="admin-header__logo" src="/logo.png" alt="" />
         <div className="admin-header__brand-text">
           <strong>Servig</strong>
           <span>{user?.role === 'ADMIN' ? 'Panel administrador' : 'Panel del taller'}</span>

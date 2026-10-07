@@ -97,7 +97,7 @@ button.danger:hover:not(:disabled) { background: var(--danger-ink); box-shadow: 
   background: var(--surface); border: 1px solid var(--border); border-radius: 16px; box-shadow: var(--shadow-lg);
 }
 .card.wide { max-width: 680px; }
-.auth-logo { display: block; width: 44px; height: 44px; margin: 0 0 0.75rem; border-radius: 999px; }
+.auth-logo { display: block; width: 44px; height: 44px; margin: 0 0 0.75rem; border-radius: 10px; }
 @media (max-width: 480px) { .card { margin: 0; border: 0; border-radius: 0; box-shadow: none; min-height: 100vh; } }
 .center { margin-top: 20vh; text-align: center; color: var(--muted); }
 

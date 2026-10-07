@@ -9,7 +9,7 @@ function ClientHeader() {
   return (
     <header className="client-header">
       <div className="client-header__brand" role="link" tabIndex={0} onClick={() => nav('/portal')} onKeyDown={(e) => e.key === 'Enter' && nav('/portal')}>
-        <img className="client-header__logo" src="/logo.svg" alt="" />
+        <img className="client-header__logo" src="/logo.png" alt="" />
         <span className="client-header__title">Servig</span>
       </div>
       <div className="client-header__actions"><UserMenu portal="client" /></div>
