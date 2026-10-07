@@ -39,5 +39,7 @@ Personal: PATCH `/repairs/:id/attachments/:attId` {visibleToCustomer} (permiso `
 GET `/audit?entity&entityId&action&userId&from&to&before&limit` (cursor por id, hasta 200 por página; `to` incluye todo el día) · GET `/audit/actions`
 GET `/email-logs?status&type&to&before&limit` (nunca devuelve el cuerpo; `canRetry` indica si se puede reenviar) · POST `/email-logs/:id/retry`
 
-## Otros
-GET `/dashboard` · GET `/search?q=` (Fase 11)
+## Dashboard y búsqueda (Fase 11)
+GET `/dashboard` (permiso `dashboard:read`: ADMIN, RECEPCION, TECNICO) → `counts` (received, inReview, pendingQuote, awaitingApproval, approved, awaitingParts, inRepair, readyForPickup, overdue, rejected, repaired), `overdue` (hasta 50, las más pasadas del umbral primero) y `thresholds`.
+GET `/search?q=` (requiere leer clientes, herramientas y reparaciones) → hasta 8 clientes, reparaciones y herramientas; con menos de 2 caracteres devuelve vacío.
+GET `/repairs?filter=overdue|pendingQuote` se combina con `status` y `search`: es a donde llevan los contadores.

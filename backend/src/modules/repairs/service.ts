@@ -9,6 +9,7 @@ import { sniff } from '../../lib/fileType.js';
 import * as storage from '../../lib/storage.js';
 import { toolView } from '../customers/service.js';
 import { allowedFor } from './workflow.js';
+import { overdueIds } from '../dashboard/service.js';
 import { countPending } from '../spareparts/service.js';
 
 export const MAX_FILE_BYTES = 10 * 1024 * 1024;
@@ -61,10 +62,13 @@ export async function createRepair(userId: number, i: CreateInput) {
   return repair;
 }
 
-export async function listRepairs(q: { status?: string; search?: string; customerId?: number }) {
+export async function listRepairs(q: { status?: string; search?: string; customerId?: number; filter?: string }) {
   const where: Prisma.RepairWhereInput = {};
   if (q.status) where.status = q.status as RepairStatus;
   if (q.customerId) where.customerId = q.customerId;
+  // Enlazan con los contadores del dashboard: "atrasadas" y "pendientes de presupuesto".
+  if (q.filter === 'overdue') where.id = { in: await overdueIds() };
+  if (q.filter === 'pendingQuote') Object.assign(where, { status: 'EN_REVISION', requiresQuote: true });
   if (q.search) {
     const contains = { contains: q.search, mode: 'insensitive' as const };
     where.OR = [

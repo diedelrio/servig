@@ -8,7 +8,7 @@ cd frontend && npm i && npm run dev
 ```
 
 ## Variables (backend)
-`DATABASE_URL`, `JWT_SECRET`, `REFRESH_SECRET`, `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD`, `EMAIL_FROM`, `FRONTEND_URL`, `UPLOAD_DIR`, `PORT`, `BUSINESS_NAME`, `BUSINESS_ADDRESS`, `BUSINESS_PHONE`, `RECEIPT_TERMS` (opcional), `DEFAULT_TAX_RATE` (21), `QUOTE_VALID_DAYS` (15), `APPROVAL_LINK_DAYS` (7), `TRUST_PROXY` (nº de proxys, p. ej. 1 detrás de un balanceador).
+`DATABASE_URL`, `JWT_SECRET`, `REFRESH_SECRET`, `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD`, `EMAIL_FROM`, `FRONTEND_URL`, `UPLOAD_DIR`, `PORT`, `BUSINESS_NAME`, `BUSINESS_ADDRESS`, `BUSINESS_PHONE`, `RECEIPT_TERMS` (opcional), `DEFAULT_TAX_RATE` (21), `QUOTE_VALID_DAYS` (15), `APPROVAL_LINK_DAYS` (7), `TRUST_PROXY` (nº de proxys, p. ej. 1 detrás de un balanceador), `OVERDUE_DAYS` (umbrales de atraso por estado, ver RN-28).
 
 ## Producción (a detallar en Fase 12)
 - Frontend: build estático (`npm run build`) en Vercel/Netlify/Nginx.

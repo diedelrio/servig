@@ -125,3 +125,24 @@ ul.plain { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
 .json { margin: 4px 0 0; padding: 8px; max-width: 420px; overflow: auto; font-size: .78rem; background: var(--bg); border-radius: 6px; }
 label.inline { display: flex; align-items: center; gap: 6px; font-weight: 500; }
 label.inline input { width: auto; }
+
+/* Dashboard y buscador */
+.tiles { display: grid; gap: 12px; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); margin: 12px 0; }
+.tiles.small { grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); }
+.tile { display: grid; gap: 2px; padding: 14px; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; color: var(--text); text-decoration: none; }
+.tile:hover { border-color: var(--primary); }
+.tile .n { font-size: 2rem; font-weight: 700; line-height: 1.1; }
+.tile .l { color: var(--muted); font-size: .9rem; }
+.tile.warn { border-color: #b26a00; }
+.tile.warn .n { color: #b26a00; }
+.tile.bad { border-color: var(--danger); background: color-mix(in srgb, var(--danger) 10%, var(--surface)); }
+.tile.bad .n { color: var(--danger); }
+.tile.good { border-color: #1e8e3e; }
+.tile.good .n { color: #1e8e3e; }
+.gsearch { position: relative; flex: 1 1 220px; max-width: 360px; }
+.gsearch input { width: 100%; }
+.gresults { position: absolute; z-index: 20; top: 100%; left: 0; right: 0; max-height: 70vh; overflow: auto; margin-top: 4px; padding: 8px; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; box-shadow: 0 8px 24px rgb(0 0 0 / .18); }
+.gresults h3 { margin: 8px 0 4px; font-size: .75rem; text-transform: uppercase; color: var(--muted); }
+.gresults a { display: block; padding: 6px 8px; border-radius: 6px; color: var(--text); text-decoration: none; }
+.gresults a:hover { background: var(--bg); }
+@media (max-width: 600px) { .gsearch { order: 5; flex-basis: 100%; max-width: none; } }

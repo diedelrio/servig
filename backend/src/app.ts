@@ -4,7 +4,7 @@ import helmet from 'helmet';
 import cookieParser from 'cookie-parser';
 import { env } from './lib/env.js';
 import { prisma } from './lib/prisma.js';
-import { HttpError } from './lib/http.js';
+import { HttpError, rejectNul } from './lib/http.js';
 import { requestContext } from './lib/requestContext.js';
 import { authRouter } from './modules/auth/routes.js';
 import { usersRouter } from './modules/users/routes.js';
@@ -15,6 +15,7 @@ import { publicQuoteRouter } from './modules/quotes/publicRoutes.js';
 import { partsRouter, repairPartsRouter } from './modules/spareparts/routes.js';
 import { portalRouter } from './modules/portal/routes.js';
 import { auditRouter, emailLogsRouter } from './modules/admin/routes.js';
+import { dashboardRouter } from './modules/dashboard/routes.js';
 
 export const app = express();
 
@@ -23,6 +24,7 @@ app.use(helmet());
 app.use(cors({ origin: env.frontendUrl, credentials: true }));
 app.use(express.json());
 app.use(cookieParser());
+app.use(rejectNul);
 app.use(requestContext);
 
 app.get('/api/health', async (_req, res) => {
@@ -39,6 +41,7 @@ app.use('/api/repairs', quotesRouter);
 app.use('/api/repairs', repairPartsRouter);
 app.use('/api/spare-parts', partsRouter);
 app.use('/api/portal', portalRouter);
+app.use('/api', dashboardRouter);
 app.use('/api/audit', auditRouter);
 app.use('/api/email-logs', emailLogsRouter);
 app.use('/api/public/quote-approval', publicQuoteRouter);

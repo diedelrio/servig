@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type FormEvent, type ReactNode } from 'rea
 import { Link, Navigate, useNavigate, useSearchParams } from 'react-router-dom'
 import { api, apiError, type ApiError } from './api'
 import { useAuth } from './auth'
+import Dashboard from './Dashboard'
 
 function Card({ title, children }: { title: string; children: ReactNode }) {
   return (
@@ -153,8 +154,9 @@ export function ResetPassword() {
 }
 
 export function Home() {
-  const { user } = useAuth()
+  const { user, can } = useAuth()
   if (user?.role === 'CLIENTE') return <Navigate to="/portal" replace />
+  if (can('dashboard:read')) return <Dashboard />
   return (
     <section>
       <h1>Hola, {user?.firstName}</h1>

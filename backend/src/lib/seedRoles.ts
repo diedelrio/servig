@@ -5,9 +5,9 @@ export const ROLES = ['ADMIN', 'RECEPCION', 'TECNICO', 'CLIENTE'] as const;
 // Permisos por rol. Cada fase agrega los suyos aquí; ADMIN recibe todos automáticamente.
 const CUSTOMER_TOOL = ['customer:read', 'customer:create', 'customer:update', 'tool:read', 'tool:create', 'tool:update'];
 const GRANTS: Record<string, string[]> = {
-  ADMIN: ['user:read', 'user:create', 'user:update', ...CUSTOMER_TOOL, 'repair:read', 'repair:create', 'repair:attach', 'repair:transition', 'diagnosis:create', 'quote:read', 'quote:write', 'part:read', 'part:write', 'audit:read', 'emaillog:read', 'emaillog:retry'],
-  RECEPCION: [...CUSTOMER_TOOL, 'repair:read', 'repair:create', 'repair:attach', 'repair:transition', 'quote:read', 'part:read'],
-  TECNICO: ['customer:read', 'tool:read', 'repair:read', 'repair:attach', 'repair:transition', 'diagnosis:create', 'quote:read', 'quote:write', 'part:read', 'part:write'],
+  ADMIN: ['user:read', 'user:create', 'user:update', ...CUSTOMER_TOOL, 'repair:read', 'repair:create', 'repair:attach', 'repair:transition', 'diagnosis:create', 'quote:read', 'quote:write', 'part:read', 'part:write', 'audit:read', 'emaillog:read', 'emaillog:retry', 'dashboard:read'],
+  RECEPCION: [...CUSTOMER_TOOL, 'repair:read', 'repair:create', 'repair:attach', 'repair:transition', 'quote:read', 'part:read', 'dashboard:read'],
+  TECNICO: ['customer:read', 'tool:read', 'repair:read', 'repair:attach', 'repair:transition', 'diagnosis:create', 'quote:read', 'quote:write', 'part:read', 'part:write', 'dashboard:read'],
   CLIENTE: [],
 };
 

@@ -15,7 +15,7 @@ const num = (v: unknown) => Number(v);
 
 repairsRouter.get('/', requirePermission('repair:read'), async (req, res) => {
   const customerId = req.query.customerId ? num(req.query.customerId) : undefined;
-  res.json(await s.listRepairs({ status: str(req.query.status), search: str(req.query.search), customerId }));
+  res.json(await s.listRepairs({ status: str(req.query.status), search: str(req.query.search), customerId, filter: str(req.query.filter) }));
 });
 
 repairsRouter.post('/', requirePermission('repair:create'), validate(createRepairSchema), async (req, res) => {

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import { api, apiError } from './api'
 import { useAuth } from './auth'
 import { STATUS_LABEL, fmtDateTime } from './status'
@@ -13,18 +13,22 @@ export default function RepairsPage() {
   const { can } = useAuth()
   const [rows, setRows] = useState<Row[]>([])
   const [search, setSearch] = useState('')
-  const [status, setStatus] = useState('')
+  // Los contadores del dashboard enlazan aquí con ?status= o ?filter=
+  const [params, setParams] = useSearchParams()
+  const [status, setStatus] = useState(params.get('status') ?? '')
+  const filter = params.get('filter') ?? ''
   const [error, setError] = useState('')
 
   useEffect(() => {
     const t = setTimeout(() => {
-      const params: Record<string, string> = {}
-      if (search) params.search = search
-      if (status) params.status = status
-      api.get<Row[]>('/repairs', { params }).then((r) => setRows(r.data)).catch((e) => setError(apiError(e).message))
+      const query: Record<string, string> = {}
+      if (search) query.search = search
+      if (status) query.status = status
+      if (filter) query.filter = filter
+      api.get<Row[]>('/repairs', { params: query }).then((r) => setRows(r.data)).catch((e) => setError(apiError(e).message))
     }, 250)
     return () => clearTimeout(t)
-  }, [search, status])
+  }, [search, status, filter])
 
   return (
     <section>
@@ -39,6 +43,12 @@ export default function RepairsPage() {
           {Object.entries(STATUS_LABEL).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
         </select>
       </div>
+      {filter && (
+        <p className="callout">
+          Mostrando: {filter === 'overdue' ? 'atrasadas' : 'pendientes de presupuesto'}{' '}
+          <button className="link" onClick={() => setParams({})}>Quitar filtro</button>
+        </p>
+      )}
       {error && <p className="error">{error}</p>}
       <div className="scroll">
         <table>
