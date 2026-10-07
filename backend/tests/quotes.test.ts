@@ -269,14 +269,19 @@ describe('envío', () => {
     expect(await prisma.repairStatusHistory.count({ where: { repairId: r.id, toStatus: 'PRESUPUESTO_PENDIENTE_APROBACION' } })).toBe(1);
   });
 
-  it('un cliente sin email: el envío funciona pero no hay correo', async () => {
+  it('un cliente sin email no puede recibir el presupuesto: se rechaza el envío y nada cambia', async () => {
     const c = await api('/api/customers', { method: 'POST', auth: rec.token, body: { name: 'Sin mail', email: '' } });
     const t = await api('/api/tools', { method: 'POST', auth: rec.token, body: { customerId: c.json.id, type: 'T', brand: 'B', model: 'M' } });
     const rep = await api('/api/repairs', { method: 'POST', auth: rec.token, body: { toolId: t.json.id, declaredFault: 'f', visualState: 'v' } });
     await api(`/api/repairs/${rep.json.id}/transition`, { method: 'POST', auth: tec.token, body: { to: 'EN_REVISION' } });
     await put(rep.json.id, [LABOR]);
+    const res = await send(rep.json.id);
+    expect(res.status).toBe(409);
+    expect(res.json.code).toBe('CUSTOMER_EMAIL_REQUIRED');
+    expect(await repairStatus(rep.json.id)).toBe('EN_REVISION');
+    // al cargar el email en la ficha, ya se puede enviar
+    await api(`/api/customers/${c.json.id}`, { method: 'PATCH', auth: rec.token, body: { email: uniq('nuevo') } });
     expect((await send(rep.json.id)).status).toBe(200);
-    expect(sent.filter((m) => m.type === 'QUOTE_AVAILABLE')).toHaveLength(0);
   });
 });
 

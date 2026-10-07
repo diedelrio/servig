@@ -128,6 +128,10 @@ export async function send(userId: number, role: string, repairId: number) {
   if (!quote) throw new HttpError(404, 'Aún no hay presupuesto');
   const cur = currentOf(quote);
   if (cur.status !== 'BORRADOR') throw new HttpError(409, 'Esta versión ya fue enviada', 'QUOTE_LOCKED');
+  // Solo el cliente puede aprobar (enlace o portal), y ambos dependen de su email: sin él, el presupuesto no tendría salida.
+  if (!repair.customer.email) {
+    throw new HttpError(409, 'El cliente no tiene email: cárgalo en su ficha antes de enviar el presupuesto', 'CUSTOMER_EMAIL_REQUIRED');
+  }
   if (!cur.items.length) throw new HttpError(400, 'Agrega al menos un concepto antes de enviar', 'EMPTY_QUOTE');
 
   const sentAt = new Date();
@@ -145,14 +149,12 @@ export async function send(userId: number, role: string, repairId: number) {
   });
   await audit('QUOTE_SENT', 'Repair', repairId, userId, { version: cur.version, total: money(cur.total), validUntil });
 
-  if (repair.customer.email) {
-    await sendEmail({
-      to: repair.customer.email, type: 'QUOTE_AVAILABLE', entity: 'Repair', entityId: String(repairId),
-      ...quoteAvailableMail(repair.customer.name, {
-        number: repair.number, tool: `${repair.tool.brand} ${repair.tool.model}`, total: money(cur.total), validUntil,
-      }),
-    });
-  }
+  await sendEmail({
+    to: repair.customer.email, type: 'QUOTE_AVAILABLE', entity: 'Repair', entityId: String(repairId),
+    ...quoteAvailableMail(repair.customer.name, {
+      number: repair.number, tool: `${repair.tool.brand} ${repair.tool.model}`, total: money(cur.total), validUntil,
+    }),
+  });
   return getQuote(repairId);
 }
 

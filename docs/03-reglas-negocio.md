@@ -18,3 +18,4 @@
 - RN-16 Un presupuesto por reparación; el estado vive en cada versión. Solo se edita el borrador; una versión enviada es inmutable. Se corrige retirándola (si el cliente no decidió o venció) o tras un rechazo, creando una versión nueva que copia las líneas. Solo la versión vigente puede aprobarse.
 - RN-17 Una versión ENVIADO con `validUntil` pasada pasa a VENCIDO (al leerla y con un barrido horario); no puede aprobarse.
 - RN-18 El diagnóstico es un registro que solo crece (autor y fecha); la visibilidad al cliente la decide quien lo escribe.
+- RN-19 Solo el cliente aprueba o rechaza un presupuesto (enlace seguro o portal); el personal no puede registrar la decisión en su nombre. Por eso un presupuesto solo puede enviarse si el cliente tiene email (decisión del dueño del producto).

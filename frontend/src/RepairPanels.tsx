@@ -142,7 +142,9 @@ export function QuotePanel({ repair, onChange }: { repair: RepairFull; onChange:
         <h2>Presupuesto {cur && <span className="badge">v{cur.version} · {QSTATUS[cur.status]}</span>}</h2>
         {canNewVersion && <button disabled={busy} onClick={() => run(() => api.post(`/repairs/${repair.id}/quote/new-version`), 'Nueva versión creada.')}>Crear nueva versión</button>}
       </div>
-      {!repair.customer.email && editable && <p className="error">El cliente no tiene email: no recibirá el aviso del presupuesto.</p>}
+      {!repair.customer.email && editable && (
+        <p className="error">El cliente no tiene email, y sin él no puede recibir ni aprobar el presupuesto. Cárgalo en su ficha antes de enviarlo.</p>
+      )}
       {!q && !editable && <p>Todavía no hay presupuesto{repair.status === 'RECIBIDO' ? ' (inicia la revisión para prepararlo).' : '.'}</p>}
 
       {editable ? (
@@ -174,7 +176,7 @@ export function QuotePanel({ repair, onChange }: { repair: RepairFull; onChange:
           <p className="totals">Subtotal {eur(totals.sub)} · IVA {eur(totals.tax)} · <b>Total {eur(totals.total)}</b> <small>(el servidor confirma el importe final al guardar)</small></p>
           <div className="row">
             <button disabled={busy} onClick={save}>Guardar borrador</button>
-            <button disabled={busy || !items.length} onClick={sendQuote}>Enviar al cliente</button>
+            <button disabled={busy || !items.length || !repair.customer.email} onClick={sendQuote}>Enviar al cliente</button>
           </div>
         </div>
       ) : cur && (
