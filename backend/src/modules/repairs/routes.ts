@@ -4,6 +4,7 @@ import { requireAuth, requirePermission } from '../../middleware/auth.js';
 import * as s from './service.js';
 import { createRepairSchema, transitionSchema } from './schemas.js';
 import { transitionRepair } from './workflow.js';
+import { diagnosisSchema } from '../quotes/schemas.js';
 
 export const repairsRouter = Router();
 repairsRouter.use(requireAuth);
@@ -32,6 +33,10 @@ repairsRouter.post('/:id/transition', requirePermission('repair:transition'), va
     actor: { userId: req.user!.id, role: req.user!.role, origin: 'STAFF' },
   });
   res.json(repair);
+});
+
+repairsRouter.post('/:id/diagnosis', requirePermission('diagnosis:create'), validate(diagnosisSchema), async (req, res) => {
+  res.status(201).json(await s.addDiagnosis(req.user!.id, num(req.params.id), req.body));
 });
 
 // El archivo viaja como cuerpo binario crudo; el nombre original, en la cabecera x-filename.

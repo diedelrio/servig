@@ -9,6 +9,7 @@ import { authRouter } from './modules/auth/routes.js';
 import { usersRouter } from './modules/users/routes.js';
 import { customersRouter, toolsRouter } from './modules/customers/routes.js';
 import { repairsRouter } from './modules/repairs/routes.js';
+import { quotesRouter } from './modules/quotes/routes.js';
 
 export const app = express();
 
@@ -27,6 +28,7 @@ app.use('/api/users', usersRouter);
 app.use('/api/customers', customersRouter);
 app.use('/api/tools', toolsRouter);
 app.use('/api/repairs', repairsRouter);
+app.use('/api/repairs', quotesRouter);
 
 app.use((err: Error, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
   if (err instanceof HttpError) {

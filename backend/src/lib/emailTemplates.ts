@@ -30,6 +30,15 @@ export const repairReceivedMail = (name: string, r: { number: string; tool: stri
     <p>Le avisaremos cuando el presupuesto esté disponible. No se realizará ninguna reparación sin su aprobación.</p>`),
 });
 
+/** El enlace de aprobación (Fase 7) se pasa en approvalUrl; sin él, el correo es solo informativo. */
+export const quoteAvailableMail = (name: string, q: { number: string; tool: string; total: string; validUntil: Date; approvalUrl?: string }) => ({
+  subject: `Presupuesto disponible · ${q.number}`,
+  html: wrap(`<p>Hola ${esc(name)}, ya está disponible el presupuesto de su ${esc(q.tool)} (${esc(q.number)}).</p>
+    <p><b>Total (IVA incluido):</b> ${esc(q.total)} €<br><b>Válido hasta:</b> ${q.validUntil.toLocaleDateString('es-ES')}</p>
+    ${q.approvalUrl ? `<p><a href="${q.approvalUrl}">Ver y aprobar o rechazar el presupuesto</a></p>` : ''}
+    <p>No se realizará ninguna reparación sin su aprobación expresa.</p>`),
+});
+
 export const repairFinishedMail = (name: string, r: { number: string; tool: string }) => ({
   subject: `Reparación finalizada · ${r.number}`,
   html: wrap(`<p>Hola ${esc(name)}, la reparación de su ${esc(r.tool)} (${esc(r.number)}) ha finalizado.</p>

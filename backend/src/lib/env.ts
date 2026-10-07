@@ -21,6 +21,10 @@ export const env = {
   },
   emailFrom: required('EMAIL_FROM'),
   uploadDir: process.env.UPLOAD_DIR ?? './uploads',
+  quote: {
+    defaultTaxRate: Number(process.env.DEFAULT_TAX_RATE ?? 21),
+    validDays: Number(process.env.QUOTE_VALID_DAYS ?? 15),
+  },
   business: {
     name: process.env.BUSINESS_NAME ?? 'Servig',
     address: process.env.BUSINESS_ADDRESS ?? '',

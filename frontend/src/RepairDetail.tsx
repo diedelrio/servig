@@ -4,6 +4,7 @@ import { api, apiError } from './api'
 import { useAuth } from './auth'
 import { ORIGIN_LABEL, STATUS_LABEL, fmtDateTime } from './status'
 import type { Tool } from './ToolForm'
+import { DiagnosisPanel, QuotePanel } from './RepairPanels'
 
 type Att = { id: number; filename: string; mime: string; size: number; createdAt: string }
 export type RepairFull = {
@@ -14,6 +15,7 @@ export type RepairFull = {
   receivedBy: { firstName: string; lastName: string }
   history: { id: number; fromStatus: string | null; toStatus: string; createdAt: string; comment: string | null; origin: string; user: { firstName: string; lastName: string } | null }[]
   attachments: Att[]
+  diagnoses: { id: number; text: string; visibleToCustomer: boolean; createdAt: string; author: { firstName: string; lastName: string } }[]
   allowedTransitions: { to: string; label: string; needsComment: boolean }[]
   business: { name: string; address: string; phone: string; receiptTerms: string }
 }
@@ -111,6 +113,9 @@ export default function RepairDetail() {
           {actionError && <p className="error">{actionError}</p>}
         </div>
       )}
+
+      <DiagnosisPanel repair={r} onChange={load} />
+      <QuotePanel repair={r} onChange={load} />
 
       <h2>Historial</h2>
       <ol className="timeline">

@@ -14,3 +14,7 @@
 - RN-12 Reenvíos de email: cooldown de 60 s por email + rate limit.
 - RN-13 Numeración REP-AAAA-NNNNNN por año, en transacción.
 - RN-14 Un cliente solo ve sus reparaciones; el diagnóstico solo si `visibleToCustomer`.
+- RN-15 Importes en decimal exacto (nunca float). IVA y neto se redondean por línea a 2 decimales (half-up) y los totales suman las líneas redondeadas. IVA por defecto `DEFAULT_TAX_RATE` (21%) y validez `QUOTE_VALID_DAYS` (15), por variables de entorno.
+- RN-16 Un presupuesto por reparación; el estado vive en cada versión. Solo se edita el borrador; una versión enviada es inmutable. Se corrige retirándola (si el cliente no decidió o venció) o tras un rechazo, creando una versión nueva que copia las líneas. Solo la versión vigente puede aprobarse.
+- RN-17 Una versión ENVIADO con `validUntil` pasada pasa a VENCIDO (al leerla y con un barrido horario); no puede aprobarse.
+- RN-18 El diagnóstico es un registro que solo crece (autor y fecha); la visibilidad al cliente la decide quien lo escribe.

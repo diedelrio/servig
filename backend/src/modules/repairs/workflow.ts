@@ -1,4 +1,4 @@
-import type { HistoryOrigin, RepairStatus } from '@prisma/client';
+import type { HistoryOrigin, Prisma, RepairStatus } from '@prisma/client';
 import { prisma } from '../../lib/prisma.js';
 import { audit } from '../../lib/audit.js';
 import { sendEmail } from '../../lib/email.js';
@@ -36,6 +36,8 @@ export const RULES: Rule[] = [
   { from: 'EN_REVISION', to: 'EN_REPARACION', label: 'Comenzar reparación (garantía sin presupuesto)', actors: TEC, onlyIfNoQuote: true },
   { from: 'PRESUPUESTO_PENDIENTE_APROBACION', to: 'PRESUPUESTO_APROBADO', label: 'Aprobar presupuesto', actors: ['CUSTOMER'], internal: true },
   { from: 'PRESUPUESTO_PENDIENTE_APROBACION', to: 'PRESUPUESTO_RECHAZADO', label: 'Rechazar presupuesto', actors: ['CUSTOMER'], internal: true },
+  // Corregir un presupuesto ya enviado: la versión se cancela desde la acción "retirar" (quotes), no por el endpoint genérico.
+  { from: 'PRESUPUESTO_PENDIENTE_APROBACION', to: 'EN_REVISION', label: 'Retirar presupuesto para corregirlo', actors: TEC, internal: true, needsComment: true },
   { from: 'PRESUPUESTO_APROBADO', to: 'PEDIDO_REPUESTOS_MARCA', label: 'Pedir repuestos a la marca', actors: TEC },
   { from: 'PRESUPUESTO_APROBADO', to: 'EN_REPARACION', label: 'Comenzar reparación', actors: TEC },
   { from: 'PEDIDO_REPUESTOS_MARCA', to: 'EN_REPARACION', label: 'Repuestos recibidos: comenzar reparación', actors: TEC },
@@ -64,6 +66,8 @@ export type TransitionInput = {
   comment?: string
   /** Solo true cuando lo invoca código interno confiable. */
   internal?: boolean
+  /** Se ejecuta dentro de la misma transacción que el cambio de estado: si falla, nada se guarda. */
+  inTx?: (tx: Prisma.TransactionClient) => Promise<void>
 }
 
 const actorOf = (a: TransitionInput['actor']): Actor | null =>
@@ -93,6 +97,7 @@ export async function transitionRepair(i: TransitionInput) {
     await tx.repairStatusHistory.create({
       data: { repairId: repair.id, fromStatus: repair.status, toStatus: i.to, userId: i.actor.userId, comment, origin: i.actor.origin },
     });
+    await i.inTx?.(tx);
   });
   await audit('REPAIR_STATUS_CHANGED', 'Repair', repair.id, i.actor.userId, { from: repair.status, to: i.to, origin: i.actor.origin });
 

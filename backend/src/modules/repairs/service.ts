@@ -88,6 +88,7 @@ export async function getRepair(id: number, role: string) {
       receivedBy: { select: { firstName: true, lastName: true } },
       history: { orderBy: { createdAt: 'asc' }, include: { user: { select: { firstName: true, lastName: true } } } },
       attachments: { orderBy: { createdAt: 'asc' }, select: { id: true, filename: true, mime: true, size: true, createdAt: true } },
+      diagnoses: { orderBy: { createdAt: 'asc' }, include: { author: { select: { firstName: true, lastName: true } } } },
     },
   });
   if (!r) throw new HttpError(404, 'Reparación no encontrada');
@@ -117,4 +118,19 @@ export async function getAttachment(repairId: number, id: number) {
   const a = await prisma.attachment.findFirst({ where: { id, repairId } });
   if (!a) throw new HttpError(404, 'Adjunto no encontrado');
   return { meta: a, stream: storage.read(a.storageKey) };
+}
+
+const FINAL = ['ENTREGADO', 'CANCELADO'];
+
+/** El diagnóstico es un registro que solo crece: cada entrada queda con su autor y fecha. */
+export async function addDiagnosis(userId: number, repairId: number, i: { text: string; visibleToCustomer: boolean }) {
+  const r = await prisma.repair.findUnique({ where: { id: repairId }, select: { status: true } });
+  if (!r) throw new HttpError(404, 'Reparación no encontrada');
+  if (FINAL.includes(r.status)) throw new HttpError(409, 'La reparación ya está cerrada');
+  const d = await prisma.diagnosis.create({
+    data: { repairId, text: i.text, visibleToCustomer: i.visibleToCustomer, authorId: userId },
+    include: { author: { select: { firstName: true, lastName: true } } },
+  });
+  await audit('DIAGNOSIS_ADDED', 'Repair', repairId, userId, { diagnosisId: d.id, visibleToCustomer: d.visibleToCustomer });
+  return d;
 }
