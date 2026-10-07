@@ -1,0 +1,16 @@
+# 03 · Reglas de negocio
+
+- **RN-01 (crítica)** Ninguna reparación con `requiresQuote=true` pasa a EN_REPARACION sin un presupuesto APROBADO de su última versión. Se valida en backend.
+- RN-02 Si `requiresQuote=false` (p. ej. garantía), EN_REVISION puede pasar directo a EN_REPARACION.
+- RN-03 Un presupuesto ENVIADO es inmutable; cambios crean una QuoteVersion nueva. Solo la última versión puede aprobarse.
+- RN-04 Presupuesto vence a los 15 días (configurable) → VENCIDO.
+- RN-05 Enlace de aprobación: token de un solo uso, vence a los 7 días, atado a Quote + versión.
+- RN-06 Rechazo: se puede crear nueva versión, o cancelar y devolver la herramienta (→ LISTO_PARA_RETIRAR).
+- RN-07 El historial de estados nunca se edita ni borra.
+- RN-08 Registro público crea siempre rol CLIENTE; el personal lo crea ADMIN. Primer ADMIN por seed.
+- RN-09 Al verificar email, el usuario CLIENTE se vincula al Customer con el mismo email, si existe.
+- RN-10 Contraseña: mínimo 10 caracteres, letra y número, no común. Hash Argon2id.
+- RN-11 Tokens: se guarda solo SHA-256; en claro solo viaja por email.
+- RN-12 Reenvíos de email: cooldown de 60 s por email + rate limit.
+- RN-13 Numeración REP-AAAA-NNNNNN por año, en transacción.
+- RN-14 Un cliente solo ve sus reparaciones; el diagnóstico solo si `visibleToCustomer`.

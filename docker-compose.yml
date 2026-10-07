@@ -1,0 +1,14 @@
+services:
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: servig
+      POSTGRES_PASSWORD: servig
+      POSTGRES_DB: servig
+    ports: ["5433:5432"]
+    volumes: [pgdata:/var/lib/postgresql/data]
+  mailpit:
+    image: axllent/mailpit
+    ports: ["1025:1025", "8025:8025"]
+volumes:
+  pgdata:

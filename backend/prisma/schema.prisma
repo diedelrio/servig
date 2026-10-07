@@ -1,0 +1,27 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Settings {
+  key   String @id
+  value String
+}
+
+model EmailLog {
+  id        Int      @id @default(autoincrement())
+  to        String
+  type      String
+  subject   String
+  entity    String?
+  entityId  String?
+  status    String   @default("PENDING") // PENDING | SENT | FAILED
+  error     String?
+  attempts  Int      @default(0)
+  createdAt DateTime @default(now())
+  sentAt    DateTime?
+}

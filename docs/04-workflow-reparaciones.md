@@ -1,0 +1,29 @@
+# 04 · Workflow de reparaciones
+
+## Transiciones permitidas
+
+| Desde | Hacia | Roles |
+|---|---|---|
+| RECIBIDO | EN_REVISION | TECNICO, ADMIN |
+| EN_REVISION | PRESUPUESTO_PENDIENTE_APROBACION (al enviar presupuesto) | TECNICO, ADMIN |
+| EN_REVISION | EN_REPARACION (solo si `requiresQuote=false`) | TECNICO, ADMIN |
+| PRESUPUESTO_PENDIENTE_APROBACION | PRESUPUESTO_APROBADO / PRESUPUESTO_RECHAZADO | CLIENTE (enlace/portal), sistema |
+| PRESUPUESTO_APROBADO | PEDIDO_REPUESTOS_MARCA | TECNICO, ADMIN |
+| PRESUPUESTO_APROBADO | EN_REPARACION | TECNICO, ADMIN |
+| PEDIDO_REPUESTOS_MARCA | EN_REPARACION (repuestos recibidos) | TECNICO, ADMIN |
+| PRESUPUESTO_RECHAZADO | EN_REVISION (nueva versión) / LISTO_PARA_RETIRAR (devolver sin reparar) | TECNICO, ADMIN |
+| EN_REPARACION | REPARADO | TECNICO, ADMIN |
+| REPARADO | LISTO_PARA_RETIRAR | TECNICO, RECEPCION, ADMIN |
+| LISTO_PARA_RETIRAR | ENTREGADO | RECEPCION, ADMIN |
+| cualquiera no final | CANCELADO | ADMIN, RECEPCION |
+
+Estados finales: ENTREGADO, CANCELADO.
+
+## Historial
+Cada transición inserta una fila en `RepairStatusHistory`: estado anterior, nuevo, fecha/hora, usuario, comentario, origen (STAFF | CUSTOMER_LINK | CUSTOMER_PORTAL | SYSTEM). Solo INSERT.
+
+## Estados de Quote
+BORRADOR → ENVIADO → APROBADO | RECHAZADO | VENCIDO; CANCELADO desde BORRADOR/ENVIADO.
+
+## Estados de repuesto
+NECESARIO → SOLICITADO → PEDIDO_A_MARCA → RECIBIDO → INSTALADO; CANCELADO.
