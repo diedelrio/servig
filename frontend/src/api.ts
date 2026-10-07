@@ -1,6 +1,6 @@
 import axios, { AxiosError } from 'axios'
 
-export type User = { id: number; email: string; firstName: string; lastName: string; role: string; permissions: string[] }
+export type User = { id: number; email: string; firstName: string; lastName: string; role: string; permissions: string[]; customerId: number | null }
 
 export const api = axios.create({ baseURL: '/api', withCredentials: true })
 

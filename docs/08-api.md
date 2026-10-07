@@ -7,7 +7,8 @@ POST `/auth/register` · POST `/auth/verify-email` · POST `/auth/resend-verific
 GET `/users?search&role&status` · POST `/users` (crea e invita por email) · PATCH `/users/:id` (rol, estado; no sobre uno mismo) · POST `/users/:id/resend-invite`
 
 ## Clientes y herramientas
-CRUD `/customers`, GET `/customers/:id` (con herramientas, reparaciones, presupuestos) · CRUD `/tools`
+GET `/customers?search` · POST `/customers` · GET `/customers/:id` (ficha con herramientas y cuenta de portal; luego reparaciones y presupuestos) · PATCH `/customers/:id`
+GET `/tools?customerId&search` · POST `/tools` · GET/PATCH `/tools/:id` (el dueño no se cambia). Sin borrado en el MVP.
 
 ## Reparaciones
 GET/POST `/repairs` · GET `/repairs/:id` · POST `/repairs/:id/transition` · GET `/repairs/:id/receipt` (resguardo) · POST/GET `/repairs/:id/attachments` · POST `/repairs/:id/diagnosis` · POST `/repairs/:id/spare-parts` · PATCH `/repair-spare-parts/:id`

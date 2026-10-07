@@ -3,10 +3,11 @@ import type { PrismaClient } from '@prisma/client';
 export const ROLES = ['ADMIN', 'RECEPCION', 'TECNICO', 'CLIENTE'] as const;
 
 // Permisos por rol. Cada fase agrega los suyos aquí; ADMIN recibe todos automáticamente.
+const CUSTOMER_TOOL = ['customer:read', 'customer:create', 'customer:update', 'tool:read', 'tool:create', 'tool:update'];
 const GRANTS: Record<string, string[]> = {
-  ADMIN: ['user:read', 'user:create', 'user:update'],
-  RECEPCION: [],
-  TECNICO: [],
+  ADMIN: ['user:read', 'user:create', 'user:update', ...CUSTOMER_TOOL],
+  RECEPCION: CUSTOMER_TOOL,
+  TECNICO: ['customer:read', 'tool:read'],
   CLIENTE: [],
 };
 

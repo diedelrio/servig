@@ -12,7 +12,6 @@ vi.mock('../src/lib/email.js', () => ({
 const { app } = await import('../src/app.js');
 const { prisma } = await import('../src/lib/prisma.js');
 const { hashPassword } = await import('../src/lib/security.js');
-const { seedRolesAndPermissions } = await import('../src/lib/seedRoles.js');
 
 let server: Server;
 let base: string;
@@ -46,7 +45,6 @@ async function userWith(role: string) {
 }
 
 beforeAll(async () => {
-  await seedRolesAndPermissions(prisma);
   await new Promise<void>((r) => {
     server = app.listen(0, () => r());
   });
@@ -106,7 +104,8 @@ describe('gestión de usuarios por ADMIN', () => {
     const login = await api('/api/auth/login', { method: 'POST', body: { email, password: NEW } });
     expect(login.status).toBe(200);
     expect(login.json.user.role).toBe('TECNICO');
-    expect(login.json.user.permissions).toEqual([]);
+    expect(login.json.user.permissions).toEqual(expect.arrayContaining(['customer:read', 'tool:read']));
+    expect(login.json.user.permissions).not.toContain('user:read');
   });
 
   it('rechaza email duplicado (409) y rol inválido (400)', async () => {

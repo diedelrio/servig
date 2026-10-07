@@ -6,6 +6,7 @@ import { HttpError } from '../../lib/http.js';
 import { DUMMY_HASH, days, hashPassword, hashToken, minutes, newToken, verifyPassword } from '../../lib/security.js';
 import { passwordChangedMail, resetPasswordMail, verifyEmailMail } from '../../lib/emailTemplates.js';
 import { signAccess } from '../../middleware/auth.js';
+import { linkCustomerByEmail } from '../../lib/customerLink.js';
 
 const COOLDOWN_MS = 60_000;
 const since = () => new Date(Date.now() - COOLDOWN_MS);
@@ -57,6 +58,7 @@ export async function verifyEmail(token: string) {
     return t.userId;
   });
   await audit('EMAIL_VERIFIED', 'User', userId, userId);
+  await linkCustomerByEmail((await prisma.user.findUnique({ where: { id: userId } }))?.email);
 }
 
 export async function resendVerification(email: string) {
@@ -77,6 +79,7 @@ export const userInclude = { role: { include: { permissions: { include: { permis
 const publicUser = (u: Prisma.UserGetPayload<{ include: typeof userInclude }>) => ({
   id: u.id, email: u.email, firstName: u.firstName, lastName: u.lastName, role: u.role.name,
   permissions: u.role.permissions.map((p) => p.permission.code),
+  customerId: u.customerId,
 });
 
 export async function login(email: string, password: string, ip?: string) {
@@ -147,5 +150,6 @@ export async function resetPassword(token: string, password: string, ip?: string
     return u;
   });
   await audit('PASSWORD_CHANGED', 'User', user.id, user.id, undefined, ip);
+  await linkCustomerByEmail(user.email); // por si fue una invitación que activó la cuenta
   await sendEmail({ to: user.email, type: 'AUTH_PASSWORD_CHANGED', entity: 'User', entityId: String(user.id), ...passwordChangedMail(user.firstName) });
 }

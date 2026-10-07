@@ -51,3 +51,9 @@ button.link { background: none; color: var(--primary); padding: 4px 6px; font-we
 .badge.disabled { color: var(--danger); border-color: var(--danger); }
 .badge.pending_email_verification { color: #b26a00; border-color: #b26a00; }
 .ok { color: #1e8e3e; margin: 0; }
+
+textarea { padding: 10px; font: inherit; color: inherit; background: var(--bg); border: 1px solid var(--border); border-radius: 6px; resize: vertical; }
+.details { display: grid; grid-template-columns: max-content 1fr; gap: 6px 16px; margin: 12px 0; }
+.details dt { color: var(--muted); }
+.details dd { margin: 0; }
+h2 { font-size: 1.15rem; }

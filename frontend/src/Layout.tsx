@@ -14,6 +14,7 @@ export function AppLayout({ permission, children }: { permission?: string; child
         <strong>Servig</strong>
         <nav>
           <NavLink to="/" end>Inicio</NavLink>
+          {can('customer:read') && <NavLink to="/customers">Clientes</NavLink>}
           {can('user:read') && <NavLink to="/admin/users">Usuarios</NavLink>}
         </nav>
         <span className="who">{user.firstName} · {user.role}</span>

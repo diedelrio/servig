@@ -71,6 +71,8 @@ model User {
   emailTokens   EmailVerificationToken[]
   resetTokens   PasswordResetToken[]
   refreshTokens RefreshToken[]
+  customer      Customer?                @relation(fields: [customerId], references: [id])
+  customerId    Int?
 }
 
 model EmailVerificationToken {
@@ -114,4 +116,37 @@ model AuditLog {
   createdAt DateTime @default(now())
 
   @@index([entity, entityId])
+}
+
+model Customer {
+  id        Int      @id @default(autoincrement())
+  name      String
+  taxId     String?  @unique // DNI/NIF/CIF normalizado
+  email     String?  @unique
+  phone     String?
+  address   String?
+  notes     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tools Tool[]
+  users User[] // cuentas del portal vinculadas
+}
+
+model Tool {
+  id                Int       @id @default(autoincrement())
+  customerId        Int
+  customer          Customer  @relation(fields: [customerId], references: [id])
+  type              String
+  brand             String
+  model             String
+  serialNumber      String?
+  purchaseDate      DateTime? @db.Date
+  warrantyExpiresAt DateTime? @db.Date
+  description       String?
+  notes             String?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  @@index([customerId])
 }
