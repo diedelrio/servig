@@ -9,6 +9,7 @@ import { sniff } from '../../lib/fileType.js';
 import * as storage from '../../lib/storage.js';
 import { toolView } from '../customers/service.js';
 import { allowedFor } from './workflow.js';
+import { countPending } from '../spareparts/service.js';
 
 export const MAX_FILE_BYTES = 10 * 1024 * 1024;
 const MAX_FILES_PER_REPAIR = 30;
@@ -92,7 +93,8 @@ export async function getRepair(id: number, role: string) {
     },
   });
   if (!r) throw new HttpError(404, 'Reparación no encontrada');
-  return { ...r, tool: toolView(r.tool), business: env.business, allowedTransitions: allowedFor(r, role) };
+  const pendingParts = await countPending(id);
+  return { ...r, tool: toolView(r.tool), business: env.business, allowedTransitions: allowedFor(r, role, { pendingParts }) };
 }
 
 const safeName = (n: string) => n.replace(/[\\/\0\r\n]/g, '_').slice(0, 150) || 'archivo';

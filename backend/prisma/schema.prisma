@@ -80,6 +80,7 @@ model User {
   customer        Customer?                @relation(fields: [customerId], references: [id])
   customerId      Int?
   quoteApprovals  QuoteApproval[]
+  sparePartsAdded RepairSparePart[]
 }
 
 model EmailVerificationToken {
@@ -212,6 +213,7 @@ model Repair {
   attachments Attachment[]
   diagnoses   Diagnosis[]
   quote       Quote?
+  spareParts  RepairSparePart[]
 
   @@index([customerId])
   @@index([toolId])
@@ -359,4 +361,36 @@ model QuoteApproval {
   userId    Int?
   user      User?            @relation(fields: [userId], references: [id])
   comment   String?
+}
+
+enum SparePartStatus {
+  NECESARIO
+  SOLICITADO
+  PEDIDO_A_MARCA
+  RECIBIDO
+  INSTALADO
+  CANCELADO
+}
+
+/// Repuesto de una reparación (sin catálogo ni stock en el MVP). Coste y precio son unitarios.
+model RepairSparePart {
+  id          Int             @id @default(autoincrement())
+  repairId    Int
+  repair      Repair          @relation(fields: [repairId], references: [id])
+  code        String?
+  description String
+  supplier    String? // proveedor o marca
+  quantity    Int
+  cost        Decimal         @db.Decimal(12, 2)
+  price       Decimal         @db.Decimal(12, 2)
+  status      SparePartStatus @default(NECESARIO)
+  orderedAt   DateTime?       @db.Date
+  receivedAt  DateTime?       @db.Date
+  notes       String?
+  createdById Int
+  createdBy   User            @relation(fields: [createdById], references: [id])
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+
+  @@index([repairId])
 }

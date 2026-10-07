@@ -252,7 +252,12 @@ describe('flujo con la API', () => {
     await go(r.id, 'EN_REVISION', tec);
     await internal(r.id, 'PRESUPUESTO_PENDIENTE_APROBACION', 'STAFF', tec);
     await approveFixture(r.id);
+    // Sin repuestos registrados no hay nada que pedir
+    expect((await go(r.id, 'PEDIDO_REPUESTOS_MARCA', tec)).json.code).toBe('NO_PENDING_PARTS');
+    const part = await prisma.repairSparePart.create({ data: { repairId: r.id, description: 'Escobillas', quantity: 1, cost: 2, price: 5, status: 'PEDIDO_A_MARCA', createdById: tec.id } });
     expect((await go(r.id, 'PEDIDO_REPUESTOS_MARCA', tec)).status).toBe(200);
+    expect((await go(r.id, 'EN_REPARACION', tec)).json.code).toBe('PARTS_PENDING'); // todavía no llegaron
+    await prisma.repairSparePart.update({ where: { id: part.id }, data: { status: 'RECIBIDO' } });
     expect((await go(r.id, 'EN_REPARACION', tec)).status).toBe(200);
   });
 });

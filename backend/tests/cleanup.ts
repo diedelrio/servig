@@ -23,6 +23,7 @@ export async function cleanup(prisma: PrismaClient, domain: string) {
   await prisma.quoteItem.deleteMany({ where: { versionId: { in: vIds } } });
   await prisma.quoteVersion.deleteMany({ where: { id: { in: vIds } } });
   await prisma.quote.deleteMany({ where: { id: { in: quotes.map((q) => q.id) } } });
+  await prisma.repairSparePart.deleteMany({ where: { repairId: { in: rIds } } });
   await prisma.diagnosis.deleteMany({ where: { repairId: { in: rIds } } });
   await prisma.repairStatusHistory.deleteMany({ where: { repairId: { in: rIds } } });
   await prisma.attachment.deleteMany({ where: { repairId: { in: rIds } } });

@@ -5,6 +5,7 @@ import { useAuth } from './auth'
 import { ORIGIN_LABEL, STATUS_LABEL, fmtDateTime } from './status'
 import type { Tool } from './ToolForm'
 import { DiagnosisPanel, QuotePanel } from './RepairPanels'
+import { SparePartsPanel } from './SparePartsPanel'
 
 type Att = { id: number; filename: string; mime: string; size: number; createdAt: string }
 export type RepairFull = {
@@ -116,6 +117,7 @@ export default function RepairDetail() {
 
       <DiagnosisPanel repair={r} onChange={load} />
       <QuotePanel repair={r} onChange={load} />
+      <SparePartsPanel repair={r} onChange={load} />
 
       <h2>Historial</h2>
       <ol className="timeline">

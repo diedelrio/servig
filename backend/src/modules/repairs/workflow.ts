@@ -3,6 +3,7 @@ import { prisma } from '../../lib/prisma.js';
 import { audit } from '../../lib/audit.js';
 import { sendEmail } from '../../lib/email.js';
 import { HttpError } from '../../lib/http.js';
+import { countPending } from '../spareparts/service.js';
 import { repairFinishedMail, repairReadyMail } from '../../lib/emailTemplates.js';
 
 type Actor = 'ADMIN' | 'RECEPCION' | 'TECNICO' | 'CUSTOMER' | 'SYSTEM';
@@ -17,6 +18,8 @@ export type Rule = {
   needsComment?: boolean
   /** RN-02: solo reparaciones que no requieren presupuesto (garantía). */
   onlyIfNoQuote?: boolean
+  /** Exige repuestos pendientes (para pedirlos) o ninguno pendiente (para seguir con la reparación). */
+  parts?: 'needPending' | 'noPending'
 }
 
 const TEC: Actor[] = ['TECNICO', 'ADMIN']
@@ -38,9 +41,9 @@ export const RULES: Rule[] = [
   { from: 'PRESUPUESTO_PENDIENTE_APROBACION', to: 'PRESUPUESTO_RECHAZADO', label: 'Rechazar presupuesto', actors: ['CUSTOMER'], internal: true },
   // Corregir un presupuesto ya enviado: la versión se cancela desde la acción "retirar" (quotes), no por el endpoint genérico.
   { from: 'PRESUPUESTO_PENDIENTE_APROBACION', to: 'EN_REVISION', label: 'Retirar presupuesto para corregirlo', actors: TEC, internal: true, needsComment: true },
-  { from: 'PRESUPUESTO_APROBADO', to: 'PEDIDO_REPUESTOS_MARCA', label: 'Pedir repuestos a la marca', actors: TEC },
+  { from: 'PRESUPUESTO_APROBADO', to: 'PEDIDO_REPUESTOS_MARCA', label: 'Pedir repuestos a la marca', actors: TEC, parts: 'needPending' },
   { from: 'PRESUPUESTO_APROBADO', to: 'EN_REPARACION', label: 'Comenzar reparación', actors: TEC },
-  { from: 'PEDIDO_REPUESTOS_MARCA', to: 'EN_REPARACION', label: 'Repuestos recibidos: comenzar reparación', actors: TEC },
+  { from: 'PEDIDO_REPUESTOS_MARCA', to: 'EN_REPARACION', label: 'Repuestos recibidos: comenzar reparación', actors: TEC, parts: 'noPending' },
   { from: 'PRESUPUESTO_RECHAZADO', to: 'EN_REVISION', label: 'Revisar y preparar nueva versión', actors: TEC },
   { from: 'PRESUPUESTO_RECHAZADO', to: 'LISTO_PARA_RETIRAR', label: 'Devolver sin reparar', actors: TEC, needsComment: true },
   { from: 'EN_REPARACION', to: 'REPARADO', label: 'Marcar como reparada', actors: TEC },
@@ -52,11 +55,17 @@ export const RULES: Rule[] = [
 export const findRule = (from: RepairStatus, to: RepairStatus) => RULES.find((r) => r.from === from && r.to === to);
 
 /** Acciones que un rol puede ejecutar a mano sobre una reparación (alimenta los botones del frontend). */
-export function allowedFor(repair: { status: RepairStatus; requiresQuote: boolean }, role: string) {
+export function allowedFor(repair: { status: RepairStatus; requiresQuote: boolean }, role: string, ctx: { pendingParts?: number } = {}) {
   return RULES.filter(
-    (r) => r.from === repair.status && !r.internal && r.actors.includes(role as Actor) && !(r.onlyIfNoQuote && repair.requiresQuote),
+    (r) =>
+      r.from === repair.status && !r.internal && r.actors.includes(role as Actor) && !(r.onlyIfNoQuote && repair.requiresQuote) &&
+      !partsBlocked(r, ctx.pendingParts),
   ).map((r) => ({ to: r.to, label: r.label, needsComment: !!r.needsComment }));
 }
+
+/** pendingParts indefinido = no se evalúa (tests de la matriz pura). */
+const partsBlocked = (r: Rule, pending?: number) =>
+  pending !== undefined && ((r.parts === 'needPending' && pending === 0) || (r.parts === 'noPending' && pending > 0));
 
 export type TransitionInput = {
   repairId: number
@@ -89,6 +98,11 @@ export async function transitionRepair(i: TransitionInput) {
   }
   // RN-01: además del estado, debe existir la aprobación registrada de la ÚLTIMA versión del presupuesto.
   if (i.to === 'EN_REPARACION' && repair.requiresQuote) await assertQuoteApproved(repair.id);
+  if (rule.parts) {
+    const pending = await countPending(repair.id);
+    if (rule.parts === 'needPending' && pending === 0) throw new HttpError(409, 'No hay repuestos pendientes que pedir: regístralos primero', 'NO_PENDING_PARTS');
+    if (rule.parts === 'noPending' && pending > 0) throw new HttpError(409, 'Aún hay repuestos sin recibir', 'PARTS_PENDING');
+  }
   const comment = i.comment?.trim() || null;
   if (rule.needsComment && !comment) throw new HttpError(400, 'Esta acción requiere un comentario', 'COMMENT_REQUIRED');
 

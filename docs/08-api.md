@@ -14,7 +14,6 @@ GET `/tools?customerId&search` · POST `/tools` · GET/PATCH `/tools/:id` (el du
 GET `/repairs?search&status&customerId` · POST `/repairs` (recepción; el cliente se deriva de la herramienta) · GET `/repairs/:id` (con historial, adjuntos y datos del taller para el resguardo) · POST `/repairs/:id/transition` (Fase 5)
 POST `/repairs/:id/attachments` (cuerpo binario crudo, cabecera `x-filename`; JPG/PNG/WebP/PDF ≤ 10 MB, validado por contenido) · GET `/repairs/:id/attachments/:attId`
 El resguardo es la página `/repairs/:id/receipt` del frontend (imprimir o guardar como PDF desde el navegador).
-POST `/repairs/:id/spare-parts` · PATCH `/repair-spare-parts/:id` (fases posteriores)
 
 ## Diagnóstico y presupuestos (Fase 6)
 POST `/repairs/:id/diagnosis` (TECNICO/ADMIN; entradas append-only, `visibleToCustomer` por defecto false)
@@ -26,6 +25,10 @@ GET `/public/quote-approval/:token` → vista del presupuesto y `state` (OPEN | 
 POST `/public/quote-approval/:token/decision` {decision: APPROVE | REJECT, comment?} → 409 con `code` (ALREADY_DECIDED, QUOTE_EXPIRED, QUOTE_WITHDRAWN, LINK_EXPIRED, LINK_REPLACED) si ya no procede.
 Personal: POST `/repairs/:id/quote/resend-link` (emite enlace nuevo; el anterior deja de valer).
 El portal (Fase 9) usará el mismo núcleo `decideQuote` con origen CUSTOMER_PORTAL.
+
+## Repuestos (Fase 8)
+GET `/repairs/:id/spare-parts` (lista + resumen: pendientes, sin instalar, totales sin cancelados) · POST `/repairs/:id/spare-parts` · PATCH `/spare-parts/:id` (solo mientras no esté INSTALADO/CANCELADO) · POST `/spare-parts/:id/status` {to, date?}
+Permisos: `part:read` (ADMIN, RECEPCION, TECNICO) y `part:write` (ADMIN, TECNICO).
 
 ## Portal cliente
 GET `/portal/repairs` · GET `/portal/repairs/:id`

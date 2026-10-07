@@ -11,6 +11,7 @@ import { customersRouter, toolsRouter } from './modules/customers/routes.js';
 import { repairsRouter } from './modules/repairs/routes.js';
 import { quotesRouter } from './modules/quotes/routes.js';
 import { publicQuoteRouter } from './modules/quotes/publicRoutes.js';
+import { partsRouter, repairPartsRouter } from './modules/spareparts/routes.js';
 
 export const app = express();
 
@@ -31,6 +32,8 @@ app.use('/api/customers', customersRouter);
 app.use('/api/tools', toolsRouter);
 app.use('/api/repairs', repairsRouter);
 app.use('/api/repairs', quotesRouter);
+app.use('/api/repairs', repairPartsRouter);
+app.use('/api/spare-parts', partsRouter);
 app.use('/api/public/quote-approval', publicQuoteRouter);
 
 app.use((err: Error, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
