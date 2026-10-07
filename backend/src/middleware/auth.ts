@@ -1,4 +1,5 @@
 import type { NextFunction, Request, Response } from 'express';
+import { getNumber } from '../lib/settings.js';
 import jwt from 'jsonwebtoken';
 import { env } from '../lib/env.js';
 import { HttpError } from '../lib/http.js';
@@ -12,7 +13,8 @@ declare module 'express-serve-static-core' {
   }
 }
 
-export const signAccess = (u: AuthUser) => jwt.sign({ role: u.role }, env.jwtSecret, { subject: String(u.id), expiresIn: '15m', algorithm: 'HS256' });
+export const signAccess = async (u: AuthUser) =>
+  jwt.sign({ role: u.role }, env.jwtSecret, { subject: String(u.id), expiresIn: `${await getNumber('session.accessMinutes')}m`, algorithm: 'HS256' });
 
 export function requireAuth(req: Request, _res: Response, next: NextFunction) {
   const h = req.headers.authorization;

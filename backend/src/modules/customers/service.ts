@@ -1,4 +1,5 @@
 import { Prisma } from '@prisma/client';
+import { resolveModel } from '../catalogs/service.js';
 import { prisma } from '../../lib/prisma.js';
 import { audit } from '../../lib/audit.js';
 import { HttpError } from '../../lib/http.js';
@@ -98,10 +99,12 @@ export const toolView = (t: ToolRow) => ({
   warrantyActive: !!t.warrantyExpiresAt && t.warrantyExpiresAt >= new Date(new Date().toISOString().slice(0, 10) + 'T00:00:00Z'),
 });
 
-const toolData = (input: Record<string, unknown>) => {
-  const { purchaseDate, warrantyExpiresAt, ...rest } = input;
-  return { ...nullify(rest), purchaseDate: toDate(purchaseDate), warrantyExpiresAt: toDate(warrantyExpiresAt) };
-};
+/** Con modelId, marca/tipo/modelo salen del catálogo; si se editan a mano, la herramienta deja de estar enlazada al catálogo. */
+async function toolData(input: Record<string, unknown>) {
+  const { purchaseDate, warrantyExpiresAt, modelId, ...rest } = input;
+  const names = modelId ? await resolveModel(Number(modelId)) : 'type' in rest || 'brand' in rest || 'model' in rest ? { modelId: null } : {};
+  return { ...nullify({ ...rest, ...names }), purchaseDate: toDate(purchaseDate), warrantyExpiresAt: toDate(warrantyExpiresAt) };
+}
 
 export async function listTools(q: { customerId?: number; search?: string }) {
   const where: Prisma.ToolWhereInput = {};
@@ -119,14 +122,14 @@ export async function getTool(id: number) {
 
 export async function createTool(userId: number, input: Record<string, unknown> & { customerId: number }) {
   if (!(await prisma.customer.findUnique({ where: { id: input.customerId } }))) throw new HttpError(404, 'Cliente no encontrado');
-  const t = await prisma.tool.create({ data: toolData(input) as Prisma.ToolUncheckedCreateInput });
+  const t = await prisma.tool.create({ data: (await toolData(input)) as Prisma.ToolUncheckedCreateInput });
   await audit('TOOL_CREATED', 'Tool', t.id, userId, { customerId: t.customerId });
   return toolView(t);
 }
 
 export async function updateTool(userId: number, id: number, input: Record<string, unknown>) {
   try {
-    const t = await prisma.tool.update({ where: { id }, data: toolData(input) as Prisma.ToolUpdateInput });
+    const t = await prisma.tool.update({ where: { id }, data: (await toolData(input)) as Prisma.ToolUncheckedUpdateInput });
     await audit('TOOL_UPDATED', 'Tool', id, userId, { fields: Object.keys(input) });
     return toolView(t);
   } catch (e) {

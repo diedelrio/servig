@@ -11,7 +11,7 @@ export type QuoteDocData = {
   status: string
   customerName: string
   tool: string
-  business: { name: string; address: string; phone: string }
+  business: { name: string; address: string; phone: string; website?: string }
   subtotal: string; taxTotal: string; total: string; items: QuoteItemView[]
   notes: string | null
   sentAt: string | null
@@ -30,7 +30,7 @@ export function QuoteDocumentView({ d, backTo }: { d: QuoteDocData; backTo: stri
       </div>
       <header>
         <h1>{d.business.name}</h1>
-        <p>{[d.business.address, d.business.phone].filter(Boolean).join(' · ')}</p>
+        <p>{[d.business.address, d.business.phone, d.business.website].filter(Boolean).join(' · ')}</p>
       </header>
       <h2 className="rnum">Presupuesto · {d.number} · v{d.version}</h2>
       <p>Estado: <b>{STATUS[d.status] ?? d.status}</b>{d.sentAt && ` · Emitido el ${fmtDateTime(d.sentAt)}`}</p>

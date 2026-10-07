@@ -28,6 +28,15 @@ const toolFields = {
   description: text(1000),
   notes: text(2000),
 };
-export const createToolSchema = z.object({ customerId: z.number().int().positive(), ...toolFields });
+// Con modelId se toman marca, tipo y modelo del catálogo; sin él, se escriben a mano (los tres obligatorios).
+const modelId = z.number().int().positive().optional();
+export const createToolSchema = z
+  .object({ customerId: z.number().int().positive(), modelId, ...toolFields, type: toolFields.type.optional(), brand: toolFields.brand.optional(), model: toolFields.model.optional() })
+  .superRefine((v, ctx) => {
+    if (v.modelId) return;
+    for (const [f, msg] of [['type', 'El tipo es obligatorio'], ['brand', 'La marca es obligatoria'], ['model', 'El modelo es obligatorio']] as const) {
+      if (!v[f]) ctx.addIssue({ code: 'custom', path: [f], message: msg });
+    }
+  });
 // El dueño de una herramienta no se cambia.
-export const updateToolSchema = z.object(toolFields).partial();
+export const updateToolSchema = z.object({ modelId, ...toolFields }).partial();

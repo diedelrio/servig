@@ -9,8 +9,9 @@ import * as ref from './reference.js';
 export const configRouter = Router();
 configRouter.use(requireAuth);
 
-configRouter.get('/settings', requirePermission('settings:read'), async (_req, res) => {
-  res.json(await listSettings());
+configRouter.get('/settings', requirePermission('settings:read'), async (req, res) => {
+  const s = req.query.section;
+  res.json(await listSettings(s === 'params' || s === 'system' ? s : undefined));
 });
 
 configRouter.put('/settings/:key', requirePermission('settings:update'), validate(z.object({ value: z.union([z.string(), z.number()]) })), async (req, res) => {

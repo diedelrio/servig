@@ -3,6 +3,7 @@ import { api, apiError } from './api'
 import { STATUS_LABEL, fmtDateTime } from './status'
 
 type Setting = {
+  section: 'params' | 'system'
   key: string; group: string; label: string; description?: string; kind: 'number' | 'text'; unit?: string
   min?: number; max?: number; integer?: boolean; maxLength?: number; required?: boolean
   value: string; default: string; source: 'database' | 'default'
@@ -41,10 +42,10 @@ function SettingRow({ s, onSaved }: { s: Setting; onSaved: () => void }) {
   )
 }
 
-function Params() {
+export function Params({ section }: { section: 'params' | 'system' }) {
   const [groups, setGroups] = useState<Group[]>([])
   const [error, setError] = useState('')
-  const load = useCallback(() => { api.get<Group[]>('/config/settings').then((r) => setGroups(r.data)).catch((e) => setError(apiError(e).message)) }, [])
+  const load = useCallback(() => { api.get<Group[]>('/config/settings', { params: { section } }).then((r) => setGroups(r.data)).catch((e) => setError(apiError(e).message)) }, [section])
   useEffect(load, [load])
   return (
     <>
@@ -148,35 +149,6 @@ function TablesTab({ d }: { d: Tables }) {
   )
 }
 
-type VG = { label: string; count: number; brand?: string; variants: { value: string; count: number }[] }
-type Catalogs = { totalTools: number; types: VG[]; brands: VG[]; models: VG[] }
-function CatalogTable({ title, rows, withBrand }: { title: string; rows: VG[]; withBrand?: boolean }) {
-  return (
-    <>
-      <h2>{title} <small className="muted">({rows.length})</small></h2>
-      <div className="scroll"><table>
-        <thead><tr><th>Nombre</th>{withBrand && <th>Marca</th>}<th>Herramientas</th><th>Escrituras distintas</th></tr></thead>
-        <tbody>{rows.map((r, i) => (
-          <tr key={i}>
-            <td>{r.label}</td>{withBrand && <td>{r.brand}</td>}<td>{r.count}</td>
-            <td>{r.variants.length > 1 ? <span className="badge pending_email_verification" title="Conviene unificarlas">{r.variants.map((v) => `${v.value} (${v.count})`).join(' · ')}</span> : '—'}</td>
-          </tr>
-        ))}{!rows.length && <tr><td colSpan={4}>Sin datos</td></tr>}</tbody>
-      </table></div>
-    </>
-  )
-}
-function CatalogsTab({ d }: { d: Catalogs }) {
-  return (
-    <>
-      <p className="muted">Se derivan de las {d.totalTools} herramientas registradas (texto libre). Las marcadas en amarillo están escritas de formas distintas.</p>
-      <CatalogTable title="Tipos de herramienta" rows={d.types} />
-      <CatalogTable title="Marcas" rows={d.brands} />
-      <CatalogTable title="Modelos" rows={d.models} withBrand />
-    </>
-  )
-}
-
 type System = { params: { group: string; name: string; value: string; note?: string }[]; environment: Record<string, string | number | boolean> }
 function SystemTab({ d }: { d: System }) {
   const groups = [...new Set(d.params.map((p) => p.group))]
@@ -202,8 +174,8 @@ function SystemTab({ d }: { d: System }) {
 }
 
 const TABS = [
-  ['params', 'Parámetros'], ['workflow', 'Estados y flujo'], ['roles', 'Roles y permisos'],
-  ['tables', 'Tablas'], ['catalogs', 'Catálogos'], ['system', 'Sistema'],
+  ['params', 'Seguridad y funcionamiento'], ['workflow', 'Estados y flujo'], ['roles', 'Roles y permisos'],
+  ['tables', 'Tablas y tipos de datos'], ['system', 'Límites fijos y entorno'],
 ] as const
 type Tab = (typeof TABS)[number][0]
 
@@ -215,21 +187,29 @@ function Remote<T>({ path, render }: { path: string; render: (d: T) => React.Rea
   return d ? <>{render(d)}</> : <p className="muted">Cargando…</p>
 }
 
-export default function ConfigPage() {
+export function ParamsPage() {
+  return (
+    <section>
+      <h1>Parámetros</h1>
+      <Params section="params" />
+    </section>
+  )
+}
+
+export default function SystemPage() {
   const [tab, setTab] = useState<Tab>('params')
   return (
     <section>
-      <h1>Configuración</h1>
+      <h1>Sistema</h1>
       <div className="row" style={{ marginBottom: '1rem' }}>
         {TABS.map(([k, l]) => (
           <button key={k} className={tab === k ? '' : 'link'} aria-pressed={tab === k} onClick={() => setTab(k)}>{l}</button>
         ))}
       </div>
-      {tab === 'params' && <Params />}
+      {tab === 'params' && <Params section="system" />}
       {tab === 'workflow' && <Remote<Workflow> path="/config/reference/workflow" render={(d) => <WorkflowTab d={d} />} />}
       {tab === 'roles' && <Remote<Roles> path="/config/reference/roles" render={(d) => <RolesTab d={d} />} />}
       {tab === 'tables' && <Remote<Tables> path="/config/reference/tables" render={(d) => <TablesTab d={d} />} />}
-      {tab === 'catalogs' && <Remote<Catalogs> path="/config/reference/catalogs" render={(d) => <CatalogsTab d={d} />} />}
       {tab === 'system' && <Remote<System> path="/config/reference/system" render={(d) => <SystemTab d={d} />} />}
     </section>
   )

@@ -2,7 +2,7 @@ import { prisma } from '../../lib/prisma.js';
 import { env } from '../../lib/env.js';
 import { MAX_ATTEMPTS, SENSITIVE_TYPES } from '../../lib/email.js';
 import { RULES } from '../repairs/workflow.js';
-import { MAX_FILES_PER_REPAIR, MAX_FILE_BYTES } from '../repairs/service.js';
+
 import { PASSWORD_MIN } from '../auth/schemas.js';
 import { overdueThresholds } from '../../lib/settings.js';
 
@@ -171,21 +171,13 @@ export type SystemParam = { group: string; name: string; value: string; note?: s
 
 /** Documentación viva de lo que NO se edita desde la pantalla: para cambiarlo hay que modificar el código y desplegar. */
 export function systemRef(): SystemParam[] {
-  const mb = MAX_FILE_BYTES / 1024 / 1024;
   return [
     { group: 'Contraseñas y sesión', name: 'Longitud mínima de contraseña', value: `${PASSWORD_MIN} caracteres`, note: 'Debe incluir una letra y un número; se rechazan las más comunes. Hash Argon2id.' },
-    { group: 'Contraseñas y sesión', name: 'Duración del acceso (JWT)', value: '15 minutos' },
-    { group: 'Contraseñas y sesión', name: 'Duración de la sesión (refresh)', value: '7 días', note: 'Rotativo; reutilizarlo tarde cierra todas las sesiones.' },
     { group: 'Contraseñas y sesión', name: 'Tolerancia ante dos pestañas', value: '10 segundos' },
-    { group: 'Enlaces de un solo uso', name: 'Confirmación de email', value: '24 horas' },
-    { group: 'Enlaces de un solo uso', name: 'Recuperación de contraseña', value: '1 hora' },
-    { group: 'Enlaces de un solo uso', name: 'Invitación de personal', value: '72 horas' },
     { group: 'Enlaces de un solo uso', name: 'Espera entre reenvíos', value: '60 segundos' },
     { group: 'Correos', name: 'Intentos inmediatos al enviar', value: '3', note: 'Esperas de 1 s y 3 s.' },
     { group: 'Correos', name: 'Intentos totales (con reintentos en segundo plano)', value: String(MAX_ATTEMPTS), note: 'Espera inicial 5 min, creciente.' },
     { group: 'Correos', name: 'Sin cuerpo guardado (llevan enlace)', value: [...SENSITIVE_TYPES].join(', ') },
-    { group: 'Adjuntos', name: 'Tamaño máximo por archivo', value: `${mb} MB` },
-    { group: 'Adjuntos', name: 'Máximo de adjuntos por reparación', value: String(MAX_FILES_PER_REPAIR) },
     { group: 'Adjuntos', name: 'Formatos permitidos', value: 'JPG, PNG, WebP, PDF', note: 'Se validan por el contenido real del archivo.' },
     { group: 'Límites de uso', name: 'Inicio de sesión', value: '20 por IP y 10 por cuenta cada 15 min', note: 'Los accesos correctos no cuentan.' },
     { group: 'Límites de uso', name: 'Registro, reenvío y recuperación', value: '10 por hora y IP' },
@@ -196,7 +188,6 @@ export function systemRef(): SystemParam[] {
     { group: 'Presupuestos y repuestos', name: 'Líneas por presupuesto', value: 'hasta 100' },
     { group: 'Presupuestos y repuestos', name: 'Cantidad y precio por línea', value: 'cantidad ≤ 9.999 · precio ≤ 999.999,99', note: 'Importes con 2 decimales y total máximo 9.999.999.999,99.' },
     { group: 'Presupuestos y repuestos', name: 'Estados del presupuesto', value: 'Borrador, Enviado, Aprobado, Rechazado, Vencido, Cancelado' },
-    { group: 'Numeración', name: 'Número de reparación', value: 'REP-AAAA-NNNNNN', note: 'Contador anual, sin repetidos.' },
     { group: 'Procesos periódicos', name: 'Vencimiento de presupuestos', value: 'cada hora' },
     { group: 'Procesos periódicos', name: 'Reintento de correos fallidos', value: 'cada 5 minutos' },
   ];

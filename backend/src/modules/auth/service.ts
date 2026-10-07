@@ -1,4 +1,5 @@
 import { Prisma } from '@prisma/client';
+import { getNumber } from '../../lib/settings.js';
 import { prisma } from '../../lib/prisma.js';
 import { sendEmail } from '../../lib/email.js';
 import { audit } from '../../lib/audit.js';
@@ -19,7 +20,7 @@ type U = { id: number; email: string; firstName: string };
 async function sendVerification(user: U) {
   await prisma.emailVerificationToken.updateMany({ where: { userId: user.id, usedAt: null }, data: { usedAt: new Date() } });
   const token = newToken();
-  await prisma.emailVerificationToken.create({ data: { userId: user.id, tokenHash: hashToken(token), expiresAt: minutes(24 * 60) } });
+  await prisma.emailVerificationToken.create({ data: { userId: user.id, tokenHash: hashToken(token), expiresAt: minutes((await getNumber('link.verifyEmailHours')) * 60) } });
   await sendEmail({ to: user.email, type: 'AUTH_VERIFY_EMAIL', entity: 'User', entityId: String(user.id), ...verifyEmailMail(user.firstName, token) });
 }
 
@@ -90,8 +91,8 @@ export async function resendVerification(email: string) {
 
 async function issueSession(user: { id: number; role: { name: string } }) {
   const refresh = newToken();
-  await prisma.refreshToken.create({ data: { userId: user.id, tokenHash: hashToken(refresh), expiresAt: days(7) } });
-  return { accessToken: signAccess({ id: user.id, role: user.role.name }), refresh };
+  await prisma.refreshToken.create({ data: { userId: user.id, tokenHash: hashToken(refresh), expiresAt: days(await getNumber('session.refreshDays')) } });
+  return { accessToken: await signAccess({ id: user.id, role: user.role.name }), refresh };
 }
 
 export const userInclude = { role: { include: { permissions: { include: { permission: true } } } } } as const;
@@ -163,7 +164,7 @@ async function issueReset(user: { id: number; email: string; firstName: string }
   if (await prisma.passwordResetToken.findFirst({ where: { userId: user.id, createdAt: { gt: since() } } })) return;
   await prisma.passwordResetToken.updateMany({ where: { userId: user.id, usedAt: null }, data: { usedAt: new Date() } });
   const token = newToken();
-  await prisma.passwordResetToken.create({ data: { userId: user.id, tokenHash: hashToken(token), expiresAt: minutes(60) } });
+  await prisma.passwordResetToken.create({ data: { userId: user.id, tokenHash: hashToken(token), expiresAt: minutes(await getNumber('link.resetPasswordMinutes')) } });
   await audit('PASSWORD_RESET_REQUESTED', 'User', user.id, user.id, undefined, ip);
   await sendEmail({ to: user.email, type: 'AUTH_PASSWORD_RESET', entity: 'User', entityId: String(user.id), ...resetPasswordMail(user.firstName, token) });
 }

@@ -53,7 +53,7 @@ export default function NewRepair() {
     return () => clearTimeout(t)
   }, [search, customer])
 
-  const addTool = async (d: Record<string, FormDataEntryValue>) => {
+  const addTool = async (d: Record<string, FormDataEntryValue | number>) => {
     setError(null)
     try {
       const r = await api.post<Tool>('/tools', { ...d, customerId: customer!.id })

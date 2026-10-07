@@ -19,7 +19,7 @@ export type RepairFull = {
   attachments: Att[]
   diagnoses: { id: number; text: string; visibleToCustomer: boolean; createdAt: string; author: { firstName: string; lastName: string } }[]
   allowedTransitions: { to: string; label: string; needsComment: boolean }[]
-  business: { name: string; address: string; phone: string; receiptTerms: string }
+  business: { name: string; address: string; phone: string; website?: string; receiptTerms: string }
 }
 
 /** Los adjuntos requieren el token, así que se descargan como blob y no con <img src>. */

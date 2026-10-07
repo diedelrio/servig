@@ -1,7 +1,7 @@
 import { Prisma, type RepairStatus } from '@prisma/client';
 import { prisma } from '../../lib/prisma.js';
 import { audit } from '../../lib/audit.js';
-import { getBusiness } from '../../lib/settings.js';
+import { getBusiness, getNumber, getValue } from '../../lib/settings.js';
 import { sendEmail } from '../../lib/email.js';
 import { HttpError } from '../../lib/http.js';
 import { repairReceivedMail } from '../../lib/emailTemplates.js';
@@ -12,16 +12,17 @@ import { allowedFor } from './workflow.js';
 import { overdueIds } from '../dashboard/service.js';
 import { countPending } from '../spareparts/service.js';
 
-export const MAX_FILE_BYTES = 10 * 1024 * 1024;
-export const MAX_FILES_PER_REPAIR = 30;
+/** Tope duro del cuerpo de la petición; el máximo real por archivo es el parámetro «attachments.maxMb». */
+export const MAX_FILE_BYTES = 50 * 1024 * 1024;
 
-/** REP-AAAA-NNNNNN. El INSERT ... ON CONFLICT DO NOTHING + UPDATE evita fallos por carrera dentro de la transacción. */
+/** PREFIJO-AAAA-NNNNNN (prefijo y cifras configurables). El INSERT ... ON CONFLICT DO NOTHING + UPDATE evita fallos por carrera dentro de la transacción. */
 async function nextNumber(tx: Prisma.TransactionClient) {
   const year = new Date().getFullYear();
-  const key = `REP-${year}`;
+  const prefix = await getValue('numbering.prefix');
+  const key = `${prefix}-${year}`;
   await tx.counter.createMany({ data: [{ key, value: 0 }], skipDuplicates: true });
   const c = await tx.counter.update({ where: { key }, data: { value: { increment: 1 } } });
-  return `${key}-${String(c.value).padStart(6, '0')}`;
+  return `${key}-${String(c.value).padStart(await getNumber('numbering.digits'), '0')}`;
 }
 
 type CreateInput = {
@@ -117,10 +118,11 @@ const safeName = (n: string) => n.replace(/[\\/\0\r\n]/g, '_').slice(0, 150) || 
 export async function addAttachment(userId: number, repairId: number, filename: string, data: Buffer) {
   if (!(await prisma.repair.findUnique({ where: { id: repairId }, select: { id: true } }))) throw new HttpError(404, 'Reparación no encontrada');
   if (!data.length) throw new HttpError(400, 'Archivo vacío');
-  if (data.length > MAX_FILE_BYTES) throw new HttpError(413, 'El archivo supera el máximo de 10 MB');
+  const maxMb = await getNumber('attachments.maxMb');
+  if (data.length > maxMb * 1024 * 1024) throw new HttpError(413, `El archivo supera el máximo de ${maxMb} MB`);
   const type = sniff(data);
   if (!type) throw new HttpError(415, 'Formato no permitido (solo JPG, PNG, WebP o PDF)');
-  if ((await prisma.attachment.count({ where: { repairId } })) >= MAX_FILES_PER_REPAIR) throw new HttpError(409, 'Límite de adjuntos alcanzado');
+  if ((await prisma.attachment.count({ where: { repairId } })) >= (await getNumber('attachments.maxPerRepair'))) throw new HttpError(409, 'Límite de adjuntos alcanzado');
 
   const storageKey = await storage.save(data, type.ext);
   const a = await prisma.attachment.create({

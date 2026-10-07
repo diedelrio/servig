@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import { getNumber } from '../../lib/settings.js';
 import type { Response } from 'express';
 import { env } from '../../lib/env.js';
 import { validate } from '../../lib/http.js';
@@ -8,8 +9,8 @@ import * as s from './service.js';
 import { emailOnlySchema, loginSchema, registerSchema, resetSchema, verifyEmailSchema } from './schemas.js';
 
 const COOKIE = 'refresh_token';
-const cookieOpts = { httpOnly: true, sameSite: 'lax', secure: env.isProd, path: '/api/auth', maxAge: 7 * 86_400_000 } as const;
-const setRefresh = (res: Response, t: string) => res.cookie(COOKIE, t, cookieOpts);
+const cookieOpts = { httpOnly: true, sameSite: 'lax', secure: env.isProd, path: '/api/auth' } as const;
+const setRefresh = async (res: Response, t: string) => res.cookie(COOKIE, t, { ...cookieOpts, maxAge: (await getNumber('session.refreshDays')) * 86_400_000 });
 
 const strict = limit(10, 60); // registro, reenvío y recuperación
 // Login: por IP y además por cuenta (frena la fuerza bruta repartida entre muchas IPs). Los accesos correctos no cuentan.
@@ -38,19 +39,19 @@ authRouter.post('/resend-verification', strict, validate(emailOnlySchema), async
 
 authRouter.post('/login', loginByIp, validate(loginSchema), loginByEmail, async (req, res) => {
   const { accessToken, refresh, user } = await s.login(req.body.email, req.body.password, req.ip);
-  setRefresh(res, refresh);
+  await setRefresh(res, refresh);
   res.json({ accessToken, user });
 });
 
 authRouter.post('/refresh', refreshLimit, async (req, res) => {
   const { accessToken, refresh, user } = await s.refresh(req.cookies?.[COOKIE]);
-  setRefresh(res, refresh);
+  await setRefresh(res, refresh);
   res.json({ accessToken, user });
 });
 
 authRouter.post('/logout', async (req, res) => {
   await s.logout(req.cookies?.[COOKIE]);
-  res.clearCookie(COOKIE, { ...cookieOpts, maxAge: undefined });
+  res.clearCookie(COOKIE, cookieOpts);
   res.status(204).end();
 });
 

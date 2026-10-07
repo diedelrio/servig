@@ -16,7 +16,7 @@ export type ReceiptData = {
   notes: string | null
   inWarranty: boolean
   warrantyExpiresAt: string | null
-  business: { name: string; address: string; phone: string; receiptTerms: string }
+  business: { name: string; address: string; phone: string; website?: string; receiptTerms: string }
 }
 
 /** Resguardo: se imprime o se guarda como PDF desde el navegador (Ctrl+P). El CSS de impresión oculta el menú. */
@@ -31,7 +31,7 @@ export function ReceiptView({ data: r, backTo }: { data: ReceiptData; backTo: st
 
       <header>
         <h1>{b.name}</h1>
-        <p>{[b.address, b.phone].filter(Boolean).join(' · ')}</p>
+        <p>{[b.address, b.phone, b.website].filter(Boolean).join(' · ')}</p>
       </header>
 
       <h2 className="rnum">Resguardo de recepción · {r.number}</h2>

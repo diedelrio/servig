@@ -1,4 +1,5 @@
 import { Prisma } from '@prisma/client';
+import { getNumber } from '../../lib/settings.js';
 import { prisma } from '../../lib/prisma.js';
 import { sendEmail } from '../../lib/email.js';
 import { audit } from '../../lib/audit.js';
@@ -27,7 +28,7 @@ export async function list(q: { search?: string; role?: string; status?: string 
 async function sendInvite(user: { id: number; email: string; firstName: string }, roleName: string) {
   await prisma.passwordResetToken.updateMany({ where: { userId: user.id, usedAt: null }, data: { usedAt: new Date() } });
   const token = newToken();
-  await prisma.passwordResetToken.create({ data: { userId: user.id, tokenHash: hashToken(token), expiresAt: minutes(72 * 60) } });
+  await prisma.passwordResetToken.create({ data: { userId: user.id, tokenHash: hashToken(token), expiresAt: minutes((await getNumber('link.inviteHours')) * 60) } });
   await sendEmail({ to: user.email, type: 'AUTH_INVITE', entity: 'User', entityId: String(user.id), ...inviteMail(user.firstName, roleName, token) });
 }
 

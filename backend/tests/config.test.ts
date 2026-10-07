@@ -187,7 +187,7 @@ describe('los parámetros se aplican de verdad', () => {
 
   it('datos del taller: el resguardo y el portal leen los de la configuración', async () => {
     const b = await settings.getBusiness();
-    expect(b).toEqual({ name: env.business.name, address: env.business.address, phone: env.business.phone, receiptTerms: env.business.receiptTerms });
+    expect(b).toEqual({ name: env.business.name, address: env.business.address, phone: env.business.phone, website: '', receiptTerms: env.business.receiptTerms });
     const c = await api('/api/customers', { method: 'POST', auth: rec.token, body: { name: 'Cliente Taller', email: uniq('tal') } });
     const tool = await api('/api/tools', { method: 'POST', auth: rec.token, body: { customerId: c.json.id, type: 'T', brand: 'B', model: 'M' } });
     const r = await api('/api/repairs', { method: 'POST', auth: rec.token, body: { toolId: tool.json.id, declaredFault: 'f', visualState: 'v' } });
@@ -316,15 +316,40 @@ describe('referencia: parámetros fijos y entorno', () => {
     const s = (await api('/api/config/reference/system', { auth: adm.token })).json;
     const p = (name: string) => s.params.find((x: { name: string }) => x.name === name);
     expect(p('Longitud mínima de contraseña').value).toBe('10 caracteres');
+    expect(p('Tamaño máximo por archivo')).toBeUndefined(); // ahora es un parámetro editable
     expect(p('Intentos totales (con reintentos en segundo plano)').value).toBe('5');
-    expect(p('Tamaño máximo por archivo').value).toBe('10 MB');
-    expect(p('Máximo de adjuntos por reparación').value).toBe('30');
     expect(p('Sin cuerpo guardado (llevan enlace)').value).toContain('QUOTE_AVAILABLE');
-    expect(new Set(s.params.map((x: { group: string }) => x.group)).size).toBeGreaterThanOrEqual(6);
+    expect(new Set(s.params.map((x: { group: string }) => x.group)).size).toBeGreaterThanOrEqual(4);
 
     expect(s.environment).toMatchObject({ entorno: 'pruebas', urlPublica: env.frontendUrl, remitente: env.emailFrom });
     const raw = JSON.stringify(s);
     for (const secret of [env.jwtSecret, 'DATABASE_URL', 'postgresql://', 'SMTP_PASSWORD', env.smtp.password ?? '\u0001']) expect(raw).not.toContain(secret);
     expect(raw.toLowerCase()).not.toContain('password"');
+  });
+});
+
+describe('parámetros de sistema', () => {
+  const sys = async () => (await api('/api/config/settings?section=system', { auth: adm.token })).json as { group: string; items: { key: string }[] }[];
+
+  it('se separan por sección: negocio en params, seguridad y numeración en system', async () => {
+    const keys = (await sys()).flatMap((g) => g.items.map((i) => i.key));
+    expect(keys).toEqual(expect.arrayContaining(['session.accessMinutes', 'session.refreshDays', 'link.inviteHours', 'attachments.maxMb', 'numbering.prefix', 'numbering.digits']));
+    expect(keys).not.toContain('quote.validDays');
+    const params = ((await api('/api/config/settings?section=params', { auth: adm.token })).json as { items: { key: string }[] }[]).flatMap((g) => g.items.map((i) => i.key));
+    expect(params).toContain('business.website');
+    expect(params).not.toContain('session.refreshDays');
+  });
+
+  it('validan rangos y el prefijo de numeración (solo mayúsculas y números)', async () => {
+    for (const [k, v] of [['session.accessMinutes', 1], ['session.accessMinutes', 500], ['session.refreshDays', 0], ['attachments.maxMb', 999], ['numbering.digits', 2], ['numbering.prefix', 'rep'], ['numbering.prefix', 'RE P'], ['numbering.prefix', 'ABCDEFGHIJK'], ['numbering.prefix', '']] as const) {
+      expect((await put(k, v)).status, `${k}=${v}`).toBe(400);
+    }
+  });
+
+  it('el valor por defecto reproduce el comportamiento anterior', async () => {
+    expect(await settings.getNumber('session.accessMinutes')).toBe(15);
+    expect(await settings.getNumber('session.refreshDays')).toBe(7);
+    expect(await settings.getValue('numbering.prefix')).toBe('REP');
+    expect(await settings.getNumber('numbering.digits')).toBe(6);
   });
 });

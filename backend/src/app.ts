@@ -21,6 +21,7 @@ import { portalRouter } from './modules/portal/routes.js';
 import { auditRouter, emailLogsRouter } from './modules/admin/routes.js';
 import { dashboardRouter } from './modules/dashboard/routes.js';
 import { configRouter } from './modules/config/routes.js';
+import { catalogsRouter } from './modules/catalogs/routes.js';
 
 export const app = express();
 
@@ -75,6 +76,7 @@ app.use('/api/portal', portalRouter);
 app.use('/api', dashboardRouter);
 app.use('/api/audit', auditRouter);
 app.use('/api/config', configRouter);
+app.use('/api/catalogs', catalogsRouter);
 app.use('/api/email-logs', emailLogsRouter);
 app.use('/api/public/quote-approval', publicQuoteRouter);
 
