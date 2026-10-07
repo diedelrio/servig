@@ -1,7 +1,7 @@
 import { useState, type ReactNode } from 'react'
 import { FaBars, FaTimes } from 'react-icons/fa'
 import { HiChevronDown } from 'react-icons/hi2'
-import { Link, useLocation, useNavigate } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../auth'
 import GlobalSearch from '../GlobalSearch'
 import { NavItemLink } from './NavItemLink'
@@ -20,7 +20,7 @@ function AdminMobileNav() {
   const ref = useDismiss(open, () => setOpenAt(null))
   const items = visibleStaffNav(can)
 
-  const isOpen = (g: NavGroup) => groupOpen[g.label] ?? pathname.startsWith(g.prefix) // se abre solo si la ruta es del grupo
+  const isOpen = (g: NavGroup) => !!groupOpen[g.label] // los submenús siempre arrancan colapsados: se abren con un clic
   return (
     <div className="admin-mobile-nav" ref={ref}>
       <button type="button" className="admin-mobile-nav__button" aria-label={open ? 'Cerrar menú' : 'Abrir menú'} aria-expanded={open} onClick={() => setOpen((o) => !o)}>
@@ -83,19 +83,22 @@ function AdminSidebar() {
   const { can } = useAuth()
   const { pathname } = useLocation()
   const items = visibleStaffNav(can)
+  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({}) // colapsados hasta que se hace clic
   return (
     <aside className="admin-sidebar" aria-label="Navegación">
       <nav className="admin-sidebar__nav">
         {items.map((n) =>
           isGroup(n) ? (
             <div key={n.label} className="admin-sidebar__group">
-              {/* La cabecera del grupo lleva a su primer apartado; el submenú se despliega al expandir la barra. */}
-              <Link to={n.children[0].to} title={n.label}
-                className={`admin-sidebar__item${pathname.startsWith(n.prefix) ? ' active' : ''}`}>
+              {/* La cabecera del grupo despliega o pliega su submenú con un clic (visible con la barra expandida). */}
+              <button type="button" title={n.label} aria-expanded={!!openGroups[n.label]}
+                onClick={() => setOpenGroups({ ...openGroups, [n.label]: !openGroups[n.label] })}
+                className={`admin-sidebar__item admin-sidebar__group-button${pathname.startsWith(n.prefix) ? ' active' : ''}`}>
                 <span className="admin-sidebar__icon"><n.icon aria-hidden /></span>
                 <span className="admin-sidebar__label">{n.label}</span>
-              </Link>
-              <div className={`admin-sidebar__submenu${pathname.startsWith(n.prefix) ? ' open' : ''}`}>
+                <HiChevronDown className={`admin-sidebar__chevron${openGroups[n.label] ? ' open' : ''}`} aria-hidden />
+              </button>
+              <div className={`admin-sidebar__submenu${openGroups[n.label] ? ' open' : ''}`}>
                 {n.children.map((c) => <NavItemLink key={c.to} item={c} base="admin-sidebar__submenu-item" />)}
               </div>
             </div>

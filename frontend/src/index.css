@@ -215,3 +215,10 @@ tr.struck td { color: var(--muted); text-decoration: line-through; }
   .rtable th { color: #000; background: #eee; }
   .terms { color: #000; }
 }
+
+/* Grilla de reglas (Configuración): columnas fijas y texto que se ajusta en vez de ensanchar la tabla */
+table.rules { table-layout: fixed; }
+table.rules td, table.rules th { white-space: normal; overflow-wrap: anywhere; vertical-align: middle; }
+table.rules .group-row th { background: var(--primary-soft); color: var(--primary-dark); text-transform: none; font-size: 0.9rem; }
+table.rules textarea { width: 100%; }
+@media (max-width: 900px) { table.rules { table-layout: auto; min-width: 760px; } }

@@ -106,7 +106,11 @@
 .admin-sidebar__group { width: 100%; display: flex; flex-direction: column; align-items: center; }
 .admin-sidebar:hover .admin-sidebar__group { align-items: stretch; }
 .admin-sidebar__submenu { display: none; gap: 0.2rem; margin: 0.28rem 0 0.32rem 2.05rem; }
-.admin-sidebar:hover .admin-sidebar__submenu { display: grid; }
+.admin-sidebar:hover .admin-sidebar__submenu.open { display: grid; }
+.admin-sidebar__group-button { width: 100%; min-height: 0; border: 0; background: none; font: inherit; text-align: left; cursor: pointer; }
+.admin-sidebar__chevron { margin-left: auto; flex: none; opacity: 0; transition: transform 0.2s, opacity 0.2s; }
+.admin-sidebar:hover .admin-sidebar__chevron { opacity: 0.7; }
+.admin-sidebar__chevron.open { transform: rotate(180deg); }
 .admin-sidebar__submenu-item {
   display: flex; align-items: center; padding: 0.48rem 0.65rem; border-radius: 10px;
   color: var(--muted); text-decoration: none; font-size: 0.82rem; font-weight: 500;
