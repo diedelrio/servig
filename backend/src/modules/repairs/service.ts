@@ -1,7 +1,7 @@
 import { Prisma, type RepairStatus } from '@prisma/client';
 import { prisma } from '../../lib/prisma.js';
 import { audit } from '../../lib/audit.js';
-import { env } from '../../lib/env.js';
+import { getBusiness } from '../../lib/settings.js';
 import { sendEmail } from '../../lib/email.js';
 import { HttpError } from '../../lib/http.js';
 import { repairReceivedMail } from '../../lib/emailTemplates.js';
@@ -13,7 +13,7 @@ import { overdueIds } from '../dashboard/service.js';
 import { countPending } from '../spareparts/service.js';
 
 export const MAX_FILE_BYTES = 10 * 1024 * 1024;
-const MAX_FILES_PER_REPAIR = 30;
+export const MAX_FILES_PER_REPAIR = 30;
 
 /** REP-AAAA-NNNNNN. El INSERT ... ON CONFLICT DO NOTHING + UPDATE evita fallos por carrera dentro de la transacción. */
 async function nextNumber(tx: Prisma.TransactionClient) {
@@ -109,7 +109,7 @@ export async function getRepair(id: number, role: string) {
   });
   if (!r) throw new HttpError(404, 'Reparación no encontrada');
   const pendingParts = await countPending(id);
-  return { ...r, tool: toolView(r.tool), business: env.business, allowedTransitions: allowedFor(r, role, { pendingParts }) };
+  return { ...r, tool: toolView(r.tool), business: await getBusiness(), allowedTransitions: allowedFor(r, role, { pendingParts }) };
 }
 
 const safeName = (n: string) => n.replace(/[\\/\0\r\n]/g, '_').slice(0, 150) || 'archivo';

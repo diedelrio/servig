@@ -37,6 +37,8 @@ Personal: PATCH `/repairs/:id/attachments/:attId` {visibleToCustomer} (permiso `
 
 ## Administración (Fase 10, solo ADMIN)
 GET `/audit?entity&entityId&action&userId&from&to&before&limit` (cursor por id, hasta 200 por página; `to` incluye todo el día) · GET `/audit/actions`
+
+Configuración (solo ADMIN, permisos `settings:read`/`settings:update`): GET `/config/settings` · PUT `/config/settings/:key` {value} · DELETE `/config/settings/:key` (restablecer) · GET `/config/reference/{workflow,roles,tables,catalogs,system}` (solo lectura; sin secretos ni datos de filas).
 GET `/email-logs?status&type&to&before&limit` (nunca devuelve el cuerpo; `canRetry` indica si se puede reenviar) · POST `/email-logs/:id/retry`
 
 ## Dashboard y búsqueda (Fase 11)

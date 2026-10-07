@@ -27,7 +27,7 @@ Todo se configura por entorno; no hay secretos en el repositorio. En producción
 | `PORT` | — | Por defecto `3000`; muchos PaaS lo inyectan. |
 | `BUSINESS_NAME`, `BUSINESS_ADDRESS`, `BUSINESS_PHONE`, `RECEIPT_TERMS` | — | Datos del taller y texto del resguardo. |
 | `DEFAULT_TAX_RATE` (21), `QUOTE_VALID_DAYS` (15), `APPROVAL_LINK_DAYS` (7) | — | Reglas de presupuestos. |
-| `OVERDUE_DAYS` | — | Umbrales de «atrasada» por estado, p. ej. `EN_REPARACION=10,RECIBIDO=2` (ver RN-28). |
+| `OVERDUE_DAYS` (y las de arriba de negocio/presupuestos) | — | Umbrales de «atrasada» por estado, p. ej. `EN_REPARACION=10,RECIBIDO=2` (ver RN-28). |
 
 Para crear el primer administrador (solo la primera vez): `SEED_ADMIN_EMAIL` y `SEED_ADMIN_PASSWORD` (≥ 12 caracteres, no de ejemplo) y ejecutar `node dist/seed.js` dentro del contenedor. Es idempotente y **nunca pisa** a un usuario existente. Después se pueden quitar esas variables.
 

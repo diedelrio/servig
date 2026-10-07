@@ -1,5 +1,5 @@
 import type { IconType } from 'react-icons'
-import { FaClipboardCheck, FaCog, FaHome, FaTools, FaUserAlt, FaUsers, FaWrench } from 'react-icons/fa'
+import { FaClipboardCheck, FaCog, FaHome, FaSlidersH, FaTools, FaUserAlt, FaUsers, FaWrench } from 'react-icons/fa'
 import { MdOutlineMarkEmailRead } from 'react-icons/md'
 
 export type NavItem = {
@@ -28,6 +28,7 @@ export const STAFF_NAV: (NavItem | NavGroup)[] = [
     children: [
       { to: '/admin/users', label: 'Usuarios', icon: FaUserAlt, can: 'user:read' },
       { to: '/admin/emails', label: 'Correos', icon: MdOutlineMarkEmailRead, can: 'emaillog:read' },
+      { to: '/admin/config', label: 'Configuración', icon: FaSlidersH, can: 'settings:read' },
       { to: '/admin/audit', label: 'Auditoría', icon: FaClipboardCheck, can: 'audit:read' },
     ],
   },

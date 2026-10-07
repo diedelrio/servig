@@ -1,7 +1,7 @@
 import { Prisma, type QuoteStatus } from '@prisma/client';
 import { prisma } from '../../lib/prisma.js';
 import { audit } from '../../lib/audit.js';
-import { env } from '../../lib/env.js';
+import { getNumber, quoteConfig } from '../../lib/settings.js';
 import { sendEmail } from '../../lib/email.js';
 import { HttpError } from '../../lib/http.js';
 import { computeTotals } from '../../lib/money.js';
@@ -9,7 +9,8 @@ import { quoteAvailableMail } from '../../lib/emailTemplates.js';
 import { transitionRepair } from '../repairs/workflow.js';
 import { approvalUrl, issueLink } from './approval.js';
 
-type ItemInput = { type: 'LABOR' | 'PART' | 'OTHER'; description: string; quantity: number; unitPrice: number; taxRate: number };
+type ItemInput = { type: 'LABOR' | 'PART' | 'OTHER'; description: string; quantity: number; unitPrice: number; taxRate?: number };
+type ResolvedItem = ItemInput & { taxRate: number };
 
 const versionInclude = { items: { orderBy: { position: 'asc' } }, approval: true } as const satisfies Prisma.QuoteVersionInclude;
 type VersionRow = Prisma.QuoteVersionGetPayload<{ include: typeof versionInclude }>;
@@ -31,7 +32,10 @@ const versionView = (v: VersionRow) => ({
 export const expireDueQuotes = async () =>
   (await prisma.quoteVersion.updateMany({ where: { status: 'ENVIADO', validUntil: { lt: new Date() } }, data: { status: 'VENCIDO' } })).count;
 
-const config = () => ({ defaultTaxRate: env.quote.defaultTaxRate, validDays: env.quote.validDays });
+const config = async () => {
+  const { defaultTaxRate, validDays } = await quoteConfig();
+  return { defaultTaxRate, validDays };
+};
 
 async function loadRepair(id: number) {
   const r = await prisma.repair.findUnique({ where: { id }, include: { customer: true, tool: true } });
@@ -51,9 +55,9 @@ export async function getQuote(repairId: number) {
   await loadRepair(repairId);
   await expireDueQuotes();
   const q = await loadQuote(repairId);
-  if (!q) return { quote: null, ...config() };
+  if (!q) return { quote: null, ...(await config()) };
   const cur = currentOf(q);
-  return { quote: { id: q.id, repairId, currentVersion: q.currentVersion, status: cur.status, versions: q.versions.map(versionView) }, ...config() };
+  return { quote: { id: q.id, repairId, currentVersion: q.currentVersion, status: cur.status, versions: q.versions.map(versionView) }, ...(await config()) };
 }
 
 const requireReview = (status: string) => {
@@ -63,7 +67,7 @@ const requireReview = (status: string) => {
 // Las columnas son Decimal(12,2): por encima se desbordaría la base de datos (y daría un 500).
 const MAX_TOTAL = new Prisma.Decimal('9999999999.99');
 
-const itemRows = (items: ItemInput[]) => {
+const itemRows = (items: ResolvedItem[]) => {
   const t = computeTotals(items);
   if (t.subtotal.gt(MAX_TOTAL) || t.taxTotal.gt(MAX_TOTAL) || t.total.gt(MAX_TOTAL)) {
     throw new HttpError(400, 'El importe total del presupuesto es demasiado grande', 'AMOUNT_TOO_LARGE');
@@ -81,7 +85,8 @@ const itemRows = (items: ItemInput[]) => {
 export async function saveDraft(userId: number, repairId: number, input: { items: ItemInput[]; notes?: string }) {
   const repair = await loadRepair(repairId);
   requireReview(repair.status);
-  const { totals, rows } = itemRows(input.items);
+  const defaultTax = await getNumber('quote.defaultTaxRate');
+  const { totals, rows } = itemRows(input.items.map((i) => ({ ...i, taxRate: i.taxRate ?? defaultTax })));
   const notes = input.notes || null;
 
   const created = await prisma.$transaction(async (tx) => {
@@ -149,7 +154,7 @@ export async function send(userId: number, role: string, repairId: number) {
   if (!cur.items.length) throw new HttpError(400, 'Agrega al menos un concepto antes de enviar', 'EMPTY_QUOTE');
 
   const sentAt = new Date();
-  const validUntil = new Date(sentAt.getTime() + env.quote.validDays * 86_400_000);
+  const validUntil = new Date(sentAt.getTime() + (await getNumber('quote.validDays')) * 86_400_000);
 
   let token = '';
   await transitionRepair({

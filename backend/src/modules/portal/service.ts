@@ -1,5 +1,5 @@
 import { prisma } from '../../lib/prisma.js';
-import { env } from '../../lib/env.js';
+import { getBusiness } from '../../lib/settings.js';
 import { HttpError } from '../../lib/http.js';
 import * as storage from '../../lib/storage.js';
 import { expireDueQuotes } from '../quotes/service.js';
@@ -76,7 +76,7 @@ export async function getRepair(customerId: number, id: number) {
     attachments: r.attachments,
     // Datos del resguardo, sin el nombre de quien lo recibió.
     receipt: {
-      business: env.business, customer: { name: r.customer.name, taxId: r.customer.taxId },
+      business: await getBusiness(), customer: { name: r.customer.name, taxId: r.customer.taxId },
       visualState: r.visualState, accessories: r.accessories, notes: r.notes, warrantyExpiresAt: r.tool.warrantyExpiresAt?.toISOString().slice(0, 10) ?? null,
     },
   };

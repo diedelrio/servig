@@ -1,6 +1,6 @@
 import type { Prisma, RepairStatus } from '@prisma/client';
 import { prisma } from '../../lib/prisma.js';
-import { env } from '../../lib/env.js';
+import { overdueThresholds } from '../../lib/settings.js';
 
 const FINAL: RepairStatus[] = ['ENTREGADO', 'CANCELADO'];
 const DAY = 86_400_000;
@@ -8,7 +8,7 @@ const DAY = 86_400_000;
 type Scope = Prisma.RepairWhereInput;
 
 /** Reparaciones no cerradas con desde cuándo están en su estado actual (fecha del último cambio de estado). */
-async function openWithAge(scope: Scope) {
+async function openWithAge(scope: Scope, thresholds: Record<string, number>) {
   const rows = await prisma.repair.findMany({
     where: { ...scope, status: { notIn: FINAL } },
     select: {
@@ -20,25 +20,26 @@ async function openWithAge(scope: Scope) {
   const now = Date.now();
   return rows.map((r) => {
     const since = r.history[0]?.createdAt ?? r.receivedAt;
-    const threshold = env.overdueDays[r.status];
+    const threshold = thresholds[r.status];
     const elapsed = now - since.getTime();
     return { ...r, since, thresholdDays: threshold, daysInStatus: Math.floor(elapsed / DAY), overdue: elapsed > threshold * DAY };
   });
 }
 
 /** Ids de las reparaciones atrasadas (para el filtro de la lista). */
-export async function overdueIds(scope: Scope = {}) {
-  return (await openWithAge(scope)).filter((r) => r.overdue).map((r) => r.id);
+export async function overdueIds(scope: Scope = {}, thresholds?: Record<string, number>) {
+  return (await openWithAge(scope, thresholds ?? (await overdueThresholds()))).filter((r) => r.overdue).map((r) => r.id);
 }
 
 /**
  * Contadores del taller. `scope` acota el universo (los tests lo usan para no depender de datos ajenos).
  * Cada contador se explica en docs/04: "pendientes de presupuesto" es un subconjunto de "en revisión".
  */
-export async function dashboard(scope: Scope = {}) {
+export async function dashboard(scope: Scope = {}, thresholds?: Record<string, number>) {
+  const limits = thresholds ?? (await overdueThresholds());
   const grouped = await prisma.repair.groupBy({ by: ['status'], where: scope, _count: { _all: true } });
   const by = (s: RepairStatus) => grouped.find((g) => g.status === s)?._count._all ?? 0;
-  const open = await openWithAge(scope);
+  const open = await openWithAge(scope, limits);
   const overdue = open.filter((r) => r.overdue).sort((a, b) => b.daysInStatus - b.thresholdDays - (a.daysInStatus - a.thresholdDays));
 
   return {
@@ -60,6 +61,6 @@ export async function dashboard(scope: Scope = {}) {
       id: r.id, number: r.number, status: r.status, customerName: r.customer.name, tool: `${r.tool.brand} ${r.tool.model}`,
       daysInStatus: r.daysInStatus, thresholdDays: r.thresholdDays, since: r.since,
     })),
-    thresholds: env.overdueDays,
+    thresholds: limits,
   };
 }

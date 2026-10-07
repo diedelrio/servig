@@ -3,9 +3,11 @@ import { z } from 'zod';
 // Lista mínima; ampliar con una lista real de contraseñas filtradas si hace falta.
 const COMMON = ['password12', 'contraseña1', '1234567890', 'qwertyuiop', 'password123', 'administrador1'];
 
+export const PASSWORD_MIN = 10;
+
 export const passwordSchema = z
   .string()
-  .min(10, 'Mínimo 10 caracteres')
+  .min(PASSWORD_MIN, `Mínimo ${PASSWORD_MIN} caracteres`)
   .max(128, 'Máximo 128 caracteres')
   .regex(/[A-Za-z]/, 'Debe incluir al menos una letra')
   .regex(/\d/, 'Debe incluir al menos un número')

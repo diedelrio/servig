@@ -10,6 +10,7 @@ import QuoteApproval from './QuoteApproval'
 import QuoteDocument from './QuoteDocument'
 import { AdminAudit, AdminEmails } from './AdminPages'
 import { PortalHome, PortalList, PortalQuotePrint, PortalReceipt, PortalRepair } from './PortalPages'
+import ConfigPage from './ConfigPage'
 import Profile from './Profile'
 import CustomersPage from './CustomersPage'
 import CustomerDetail from './CustomerDetail'
@@ -33,6 +34,7 @@ export default function App() {
       <Route path="/repairs/:id/quote/print" element={<AppLayout permission="quote:read"><QuoteDocument /></AppLayout>} />
       <Route path="/portal/repairs/:id/quote/print" element={<AppLayout role="CLIENTE"><PortalQuotePrint /></AppLayout>} />
       <Route path="/admin/emails" element={<AppLayout permission="emaillog:read"><AdminEmails /></AppLayout>} />
+      <Route path="/admin/config" element={<AppLayout permission="settings:read"><ConfigPage /></AppLayout>} />
       <Route path="/admin/audit" element={<AppLayout permission="audit:read"><AdminAudit /></AppLayout>} />
       <Route path="/quote-approval" element={<QuoteApproval />} />
       <Route path="/login" element={<Login />} />

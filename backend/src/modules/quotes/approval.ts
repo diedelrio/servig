@@ -2,6 +2,7 @@ import type { HistoryOrigin, Prisma } from '@prisma/client';
 import { prisma } from '../../lib/prisma.js';
 import { audit } from '../../lib/audit.js';
 import { env } from '../../lib/env.js';
+import { getBusiness, getNumber } from '../../lib/settings.js';
 import { sendEmail } from '../../lib/email.js';
 import { HttpError } from '../../lib/http.js';
 import { hashToken, newToken } from '../../lib/security.js';
@@ -17,7 +18,7 @@ export const approvalUrl = (token: string) => `${env.frontendUrl}/quote-approval
 export async function issueLink(db: Db, versionId: number, validUntil: Date) {
   const token = newToken();
   await db.quoteLinkToken.updateMany({ where: { versionId, usedAt: null }, data: { usedAt: new Date() } });
-  const byDays = new Date(Date.now() + env.quote.approvalLinkDays * 86_400_000);
+  const byDays = new Date(Date.now() + (await getNumber('quote.approvalLinkDays')) * 86_400_000);
   await db.quoteLinkToken.create({
     data: { versionId, tokenHash: hashToken(token), expiresAt: byDays < validUntil ? byDays : validUntil },
   });
@@ -69,11 +70,12 @@ function stateOf(l: Link): LinkState {
 export async function viewByLink(token: string) {
   const l = await loadLink(token);
   const state = stateOf(l);
+  const business = await getBusiness();
   const v = l.version;
   const repair = v.quote.repair;
   const base = {
     state,
-    business: { name: env.business.name, phone: env.business.phone },
+    business: { name: business.name, phone: business.phone },
     repair: { number: repair.number },
     customerName: repair.customer.name,
     tool: `${repair.tool.brand} ${repair.tool.model}`,

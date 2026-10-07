@@ -1,5 +1,4 @@
 import { z } from 'zod';
-import { env } from '../../lib/env.js';
 
 // Importes con como máximo 2 decimales (se almacenan y calculan en decimal exacto).
 const money = (max: number) =>
@@ -10,7 +9,8 @@ const item = z.object({
   description: z.string().trim().min(1, 'Describe el concepto').max(300),
   quantity: money(9_999).refine((n) => n > 0, 'La cantidad debe ser mayor que 0'),
   unitPrice: money(999_999.99).refine((n) => n >= 0, 'El precio no puede ser negativo'),
-  taxRate: money(100).refine((n) => n >= 0, 'IVA inválido').default(env.quote.defaultTaxRate),
+  // Opcional: si falta, el servicio aplica el IVA por defecto vigente (parámetro editable), no uno fijado al arrancar.
+  taxRate: money(100).refine((n) => n >= 0, 'IVA inválido').optional(),
 });
 
 export const saveQuoteSchema = z.object({

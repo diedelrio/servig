@@ -20,6 +20,7 @@ import { partsRouter, repairPartsRouter } from './modules/spareparts/routes.js';
 import { portalRouter } from './modules/portal/routes.js';
 import { auditRouter, emailLogsRouter } from './modules/admin/routes.js';
 import { dashboardRouter } from './modules/dashboard/routes.js';
+import { configRouter } from './modules/config/routes.js';
 
 export const app = express();
 
@@ -73,6 +74,7 @@ app.use('/api/spare-parts', partsRouter);
 app.use('/api/portal', portalRouter);
 app.use('/api', dashboardRouter);
 app.use('/api/audit', auditRouter);
+app.use('/api/config', configRouter);
 app.use('/api/email-logs', emailLogsRouter);
 app.use('/api/public/quote-approval', publicQuoteRouter);
 
