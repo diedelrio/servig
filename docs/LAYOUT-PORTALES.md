@@ -17,7 +17,7 @@ Stack: React 19, react-router-dom 7 (`NavLink`), react-icons (`fa`, `hi2`, `md`)
 
 | Token | Valor | Uso |
 |---|---|---|
-| Primario | `rgb(79 70 229)` (indigo) | activos, botones, avatar |
+| Primario | `#ff6600` (naranja de https://servigonzalez.onrender.com; texto sobre claro `#c2410c`) | activos, botones, avatar |
 | Primario hover | `#4338ca` | hover |
 | Primario oscuro texto | `#312e81` | textos sobre fondos suaves |
 | Primario soft | `rgba(79,70,229,.10)` (admin) / `#f5f3ff` (cliente) | hover de ítems |
