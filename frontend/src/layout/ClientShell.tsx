@@ -1,16 +1,18 @@
 import type { ReactNode } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useBusinessName } from '../businessName'
 import { NavItemLink } from './NavItemLink'
 import { CLIENT_NAV } from './nav'
 import { UserMenu } from './UserMenu'
 
 function ClientHeader() {
   const nav = useNavigate()
+  const businessName = useBusinessName()
   return (
     <header className="client-header">
       <div className="client-header__brand" role="link" tabIndex={0} onClick={() => nav('/portal')} onKeyDown={(e) => e.key === 'Enter' && nav('/portal')}>
         <img className="client-header__logo" src="/logo.png" alt="" />
-        <span className="client-header__title">Servig</span>
+        <span className="client-header__title">{businessName}</span>
       </div>
       <div className="client-header__actions"><UserMenu portal="client" /></div>
     </header>

@@ -1,4 +1,5 @@
 import express from 'express';
+import { getBusiness } from './lib/settings.js';
 import cors from 'cors';
 import helmet from 'helmet';
 import cookieParser from 'cookie-parser';
@@ -46,6 +47,10 @@ app.use(requestContext);
 
 // Comprobación para el balanceador/PaaS: la base responde Y la carpeta de adjuntos existe y se puede escribir
 // (si el volumen persistente no está montado, aquí se nota en vez de perder fotos en silencio).
+// Nombre del taller: lo muestran las cabeceras y las pantallas de acceso (no es un dato sensible).
+app.get('/api/business', async (_req, res) => {
+  res.json({ name: (await getBusiness()).name });
+});
 app.get('/api/health', async (_req, res) => {
   const checks = { db: false, storage: false };
   try {

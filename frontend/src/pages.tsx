@@ -7,7 +7,7 @@ import Dashboard from './Dashboard'
 function Card({ title, children }: { title: string; children: ReactNode }) {
   return (
     <main className="card">
-      <img className="auth-logo" src="/logo.png" alt="Servig" />
+      <img className="auth-logo" src="/logo.png" alt="" />
       <h1>{title}</h1>
       {children}
     </main>

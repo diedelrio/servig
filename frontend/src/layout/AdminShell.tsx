@@ -3,6 +3,7 @@ import { FaBars, FaTimes } from 'react-icons/fa'
 import { HiChevronDown } from 'react-icons/hi2'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../auth'
+import { useBusinessName } from '../businessName'
 import GlobalSearch from '../GlobalSearch'
 import { NavItemLink } from './NavItemLink'
 import { isGroup, visibleStaffNav, type NavGroup } from './nav'
@@ -57,13 +58,14 @@ function AdminMobileNav() {
 function AdminHeader() {
   const { user, can } = useAuth()
   const nav = useNavigate()
+  const businessName = useBusinessName()
   const { pathname, search } = useLocation()
   return (
     <header className="admin-header">
       <div className="admin-header__brand" role="link" tabIndex={0} onClick={() => nav('/')} onKeyDown={(e) => e.key === 'Enter' && nav('/')}>
         <img className="admin-header__logo" src="/logo.png" alt="" />
         <div className="admin-header__brand-text">
-          <strong>Servig</strong>
+          <strong>{businessName}</strong>
           <span>{user?.role === 'ADMIN' ? 'Panel administrador' : 'Panel del taller'}</span>
         </div>
       </div>

@@ -187,7 +187,8 @@ describe('los parámetros se aplican de verdad', () => {
 
   it('datos del taller: el resguardo y el portal leen los de la configuración', async () => {
     const b = await settings.getBusiness();
-    expect(b).toEqual({ name: env.business.name, address: env.business.address, phone: env.business.phone, website: '', receiptTerms: env.business.receiptTerms });
+    // Los valores pueden estar personalizados en la base de desarrollo: se comparan con lo que la configuración dice que rige.
+    expect(b).toEqual({ name: await settings.getValue('business.name'), address: await settings.getValue('business.address'), phone: await settings.getValue('business.phone'), website: await settings.getValue('business.website'), receiptTerms: await settings.getValue('business.receiptTerms') });
     const c = await api('/api/customers', { method: 'POST', auth: rec.token, body: { name: 'Cliente Taller', email: uniq('tal') } });
     const tool = await api('/api/tools', { method: 'POST', auth: rec.token, body: { customerId: c.json.id, type: 'T', brand: 'B', model: 'M' } });
     const r = await api('/api/repairs', { method: 'POST', auth: rec.token, body: { toolId: tool.json.id, declaredFault: 'f', visualState: 'v' } });
@@ -351,5 +352,13 @@ describe('parámetros de sistema', () => {
     expect(await settings.getNumber('session.refreshDays')).toBe(7);
     expect(await settings.getValue('numbering.prefix')).toBe('REP');
     expect(await settings.getNumber('numbering.digits')).toBe(6);
+  });
+});
+
+describe('nombre del taller público', () => {
+  it('lo ven las cabeceras sin iniciar sesión, y solo trae el nombre', async () => {
+    const r = await api('/api/business');
+    expect(r.status).toBe(200);
+    expect(r.json).toEqual({ name: await settings.getValue('business.name') });
   });
 });

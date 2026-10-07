@@ -1,6 +1,7 @@
 import { Fragment, useCallback, useEffect, useState } from 'react'
 import { FaEye, FaPen, FaTrash } from 'react-icons/fa'
 import { api, apiError } from './api'
+import { businessNameChanged } from './businessName'
 
 type Setting = {
   key: string; section: 'params' | 'system'; group: string; label: string; description?: string; kind: 'number' | 'text'; unit: string | null
@@ -23,7 +24,7 @@ function Row({ s, onSaved, onError }: { s: Setting; onSaved: () => void; onError
     onError(''); setBusy(true)
     try { await fn(); done?.(); onSaved() } catch (e) { onError(`${s.label}: ${apiError(e).message}`) } finally { setBusy(false) }
   }
-  const save = () => run(() => api.put(`/config/settings/${s.key}`, { value: editing }), () => setEditing(null))
+  const save = () => run(() => api.put(`/config/settings/${s.key}`, { value: editing }), () => { setEditing(null); if (s.key === 'business.name') businessNameChanged() })
   const long = s.kind === 'text' && (s.maxLength ?? 0) > 250
   const custom = s.source === 'database'
   return (
@@ -50,7 +51,7 @@ function Row({ s, onSaved, onError }: { s: Setting; onSaved: () => void; onError
               <button className="link" aria-label={`Ver ${s.label}`} title="Ver detalle" aria-expanded={detail} onClick={() => setDetail(!detail)}><FaEye aria-hidden /></button>
               <button className="link" aria-label={`Editar ${s.label}`} title="Editar" onClick={() => setEditing(s.value)}><FaPen aria-hidden /></button>
               <button className="link" aria-label={`Restablecer ${s.label}`} title={custom ? 'Restablecer al valor por defecto' : 'Ya tiene el valor por defecto'}
-                disabled={!custom || busy} onClick={() => confirm(`¿Restablecer «${s.label}» a ${s.default || '(vacío)'}?`) && run(() => api.delete(`/config/settings/${s.key}`))}><FaTrash aria-hidden /></button>
+                disabled={!custom || busy} onClick={() => confirm(`¿Restablecer «${s.label}» a ${s.default || '(vacío)'}?`) && run(() => api.delete(`/config/settings/${s.key}`), () => s.key === 'business.name' && businessNameChanged())}><FaTrash aria-hidden /></button>
             </>
           ) : (
             <>
