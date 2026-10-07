@@ -2,7 +2,8 @@ import express, { Router } from 'express';
 import { HttpError, validate } from '../../lib/http.js';
 import { requireAuth, requirePermission } from '../../middleware/auth.js';
 import * as s from './service.js';
-import { createRepairSchema } from './schemas.js';
+import { createRepairSchema, transitionSchema } from './schemas.js';
+import { transitionRepair } from './workflow.js';
 
 export const repairsRouter = Router();
 repairsRouter.use(requireAuth);
@@ -20,7 +21,17 @@ repairsRouter.post('/', requirePermission('repair:create'), validate(createRepai
 });
 
 repairsRouter.get('/:id', requirePermission('repair:read'), async (req, res) => {
-  res.json(await s.getRepair(num(req.params.id)));
+  res.json(await s.getRepair(num(req.params.id), req.user!.role));
+});
+
+repairsRouter.post('/:id/transition', requirePermission('repair:transition'), validate(transitionSchema), async (req, res) => {
+  const repair = await transitionRepair({
+    repairId: num(req.params.id),
+    to: req.body.to,
+    comment: req.body.comment,
+    actor: { userId: req.user!.id, role: req.user!.role, origin: 'STAFF' },
+  });
+  res.json(repair);
 });
 
 // El archivo viaja como cuerpo binario crudo; el nombre original, en la cabecera x-filename.

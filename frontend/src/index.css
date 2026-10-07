@@ -91,3 +91,6 @@ h2 { font-size: 1.15rem; }
   .rtable th { background: #eee; color: #000; }
   .terms { color: #000; }
 }
+
+.actionsrow { margin-top: 10px; }
+button.danger { background: var(--danger); }

@@ -8,6 +8,7 @@ import { repairReceivedMail } from '../../lib/emailTemplates.js';
 import { sniff } from '../../lib/fileType.js';
 import * as storage from '../../lib/storage.js';
 import { toolView } from '../customers/service.js';
+import { allowedFor } from './workflow.js';
 
 export const MAX_FILE_BYTES = 10 * 1024 * 1024;
 const MAX_FILES_PER_REPAIR = 30;
@@ -78,7 +79,7 @@ export async function listRepairs(q: { status?: string; search?: string; custome
   return rows;
 }
 
-export async function getRepair(id: number) {
+export async function getRepair(id: number, role: string) {
   const r = await prisma.repair.findUnique({
     where: { id },
     include: {
@@ -90,7 +91,7 @@ export async function getRepair(id: number) {
     },
   });
   if (!r) throw new HttpError(404, 'Reparación no encontrada');
-  return { ...r, tool: toolView(r.tool), business: env.business };
+  return { ...r, tool: toolView(r.tool), business: env.business, allowedTransitions: allowedFor(r, role) };
 }
 
 const safeName = (n: string) => n.replace(/[\\/\0\r\n]/g, '_').slice(0, 150) || 'archivo';

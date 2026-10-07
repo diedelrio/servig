@@ -15,3 +15,11 @@ export const createRepairSchema = z
     message: 'Solo una reparación en garantía puede no requerir presupuesto',
     path: ['requiresQuote'],
   });
+
+export const transitionSchema = z.object({
+  to: z.enum([
+    'RECIBIDO', 'EN_REVISION', 'PRESUPUESTO_PENDIENTE_APROBACION', 'PRESUPUESTO_APROBADO', 'PRESUPUESTO_RECHAZADO',
+    'PEDIDO_REPUESTOS_MARCA', 'EN_REPARACION', 'REPARADO', 'LISTO_PARA_RETIRAR', 'ENTREGADO', 'CANCELADO',
+  ]),
+  comment: z.string().trim().max(1000).optional(),
+});

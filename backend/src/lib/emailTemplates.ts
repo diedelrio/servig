@@ -30,7 +30,19 @@ export const repairReceivedMail = (name: string, r: { number: string; tool: stri
     <p>Le avisaremos cuando el presupuesto esté disponible. No se realizará ninguna reparación sin su aprobación.</p>`),
 });
 
-export const passwordChangedMail = (name: string) => ({
+export const repairFinishedMail = (name: string, r: { number: string; tool: string }) => ({
+  subject: `Reparación finalizada · ${r.number}`,
+  html: wrap(`<p>Hola ${esc(name)}, la reparación de su ${esc(r.tool)} (${esc(r.number)}) ha finalizado.</p>
+    <p>En breve le avisaremos cuando esté lista para retirar.</p>`),
+});
+
+export const repairReadyMail = (name: string, r: { number: string; tool: string }) => ({
+  subject: `Lista para retirar · ${r.number}`,
+  html: wrap(`<p>Hola ${esc(name)}, su ${esc(r.tool)} (${esc(r.number)}) está lista para retirar.</p>
+    <p>Recuerde traer el resguardo de recepción.</p>`),
+});
+
+export const passwordChangedMail =(name: string) => ({
   subject: 'Tu contraseña fue cambiada',
   html: wrap(`<p>Hola ${esc(name)}, tu contraseña se cambió correctamente. Si no fuiste tú, contacta con el taller.</p>`),
 });

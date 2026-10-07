@@ -1,0 +1,116 @@
+import type { HistoryOrigin, RepairStatus } from '@prisma/client';
+import { prisma } from '../../lib/prisma.js';
+import { audit } from '../../lib/audit.js';
+import { sendEmail } from '../../lib/email.js';
+import { HttpError } from '../../lib/http.js';
+import { repairFinishedMail, repairReadyMail } from '../../lib/emailTemplates.js';
+
+type Actor = 'ADMIN' | 'RECEPCION' | 'TECNICO' | 'CUSTOMER' | 'SYSTEM';
+
+export type Rule = {
+  from: RepairStatus
+  to: RepairStatus
+  label: string // texto del botón
+  actors: Actor[]
+  /** Solo la dispara código interno (envío de presupuesto, decisión del cliente), nunca el endpoint público. */
+  internal?: boolean
+  needsComment?: boolean
+  /** RN-02: solo reparaciones que no requieren presupuesto (garantía). */
+  onlyIfNoQuote?: boolean
+}
+
+const TEC: Actor[] = ['TECNICO', 'ADMIN']
+
+// Fuente de verdad del workflow (docs/04-workflow-reparaciones.md).
+// RN-01: EN_REPARACION solo es alcanzable desde PRESUPUESTO_APROBADO / PEDIDO_REPUESTOS_MARCA,
+// o desde EN_REVISION cuando la reparación no requiere presupuesto. Los estados de presupuesto
+// los fijan únicamente reglas `internal`, así que el personal no puede "saltarse" la aprobación.
+const NON_FINAL: RepairStatus[] = [
+  'RECIBIDO', 'EN_REVISION', 'PRESUPUESTO_PENDIENTE_APROBACION', 'PRESUPUESTO_APROBADO', 'PRESUPUESTO_RECHAZADO',
+  'PEDIDO_REPUESTOS_MARCA', 'EN_REPARACION', 'REPARADO', 'LISTO_PARA_RETIRAR',
+]
+
+export const RULES: Rule[] = [
+  { from: 'RECIBIDO', to: 'EN_REVISION', label: 'Iniciar revisión', actors: TEC },
+  { from: 'EN_REVISION', to: 'PRESUPUESTO_PENDIENTE_APROBACION', label: 'Enviar presupuesto', actors: TEC, internal: true },
+  { from: 'EN_REVISION', to: 'EN_REPARACION', label: 'Comenzar reparación (garantía sin presupuesto)', actors: TEC, onlyIfNoQuote: true },
+  { from: 'PRESUPUESTO_PENDIENTE_APROBACION', to: 'PRESUPUESTO_APROBADO', label: 'Aprobar presupuesto', actors: ['CUSTOMER'], internal: true },
+  { from: 'PRESUPUESTO_PENDIENTE_APROBACION', to: 'PRESUPUESTO_RECHAZADO', label: 'Rechazar presupuesto', actors: ['CUSTOMER'], internal: true },
+  { from: 'PRESUPUESTO_APROBADO', to: 'PEDIDO_REPUESTOS_MARCA', label: 'Pedir repuestos a la marca', actors: TEC },
+  { from: 'PRESUPUESTO_APROBADO', to: 'EN_REPARACION', label: 'Comenzar reparación', actors: TEC },
+  { from: 'PEDIDO_REPUESTOS_MARCA', to: 'EN_REPARACION', label: 'Repuestos recibidos: comenzar reparación', actors: TEC },
+  { from: 'PRESUPUESTO_RECHAZADO', to: 'EN_REVISION', label: 'Revisar y preparar nueva versión', actors: TEC },
+  { from: 'PRESUPUESTO_RECHAZADO', to: 'LISTO_PARA_RETIRAR', label: 'Devolver sin reparar', actors: TEC, needsComment: true },
+  { from: 'EN_REPARACION', to: 'REPARADO', label: 'Marcar como reparada', actors: TEC },
+  { from: 'REPARADO', to: 'LISTO_PARA_RETIRAR', label: 'Lista para retirar', actors: ['TECNICO', 'RECEPCION', 'ADMIN'] },
+  { from: 'LISTO_PARA_RETIRAR', to: 'ENTREGADO', label: 'Registrar entrega', actors: ['RECEPCION', 'ADMIN'] },
+  ...NON_FINAL.map((from): Rule => ({ from, to: 'CANCELADO', label: 'Cancelar reparación', actors: ['ADMIN', 'RECEPCION'], needsComment: true })),
+]
+
+export const findRule = (from: RepairStatus, to: RepairStatus) => RULES.find((r) => r.from === from && r.to === to);
+
+/** Acciones que un rol puede ejecutar a mano sobre una reparación (alimenta los botones del frontend). */
+export function allowedFor(repair: { status: RepairStatus; requiresQuote: boolean }, role: string) {
+  return RULES.filter(
+    (r) => r.from === repair.status && !r.internal && r.actors.includes(role as Actor) && !(r.onlyIfNoQuote && repair.requiresQuote),
+  ).map((r) => ({ to: r.to, label: r.label, needsComment: !!r.needsComment }));
+}
+
+export type TransitionInput = {
+  repairId: number
+  to: RepairStatus
+  /** STAFF usa el rol real del usuario; los orígenes de cliente/sistema se mapean a CUSTOMER/SYSTEM. */
+  actor: { userId: number | null; role: string | null; origin: HistoryOrigin }
+  comment?: string
+  /** Solo true cuando lo invoca código interno confiable. */
+  internal?: boolean
+}
+
+const actorOf = (a: TransitionInput['actor']): Actor | null =>
+  a.origin === 'STAFF' ? (a.role as Actor | null) : a.origin === 'SYSTEM' ? 'SYSTEM' : 'CUSTOMER';
+
+/** ÚNICO punto por el que cambia el estado de una reparación. */
+export async function transitionRepair(i: TransitionInput) {
+  const repair = await prisma.repair.findUnique({ where: { id: i.repairId }, include: { customer: true, tool: true } });
+  if (!repair) throw new HttpError(404, 'Reparación no encontrada');
+
+  const rule = findRule(repair.status, i.to);
+  if (!rule || (rule.internal && !i.internal)) {
+    throw new HttpError(409, 'Transición no permitida desde el estado actual', 'INVALID_TRANSITION');
+  }
+  const actor = actorOf(i.actor);
+  if (!actor || !rule.actors.includes(actor)) throw new HttpError(403, 'Tu rol no puede realizar esta acción');
+  if (rule.onlyIfNoQuote && repair.requiresQuote) {
+    throw new HttpError(409, 'Esta reparación requiere presupuesto aprobado antes de comenzar', 'QUOTE_REQUIRED');
+  }
+  const comment = i.comment?.trim() || null;
+  if (rule.needsComment && !comment) throw new HttpError(400, 'Esta acción requiere un comentario', 'COMMENT_REQUIRED');
+
+  await prisma.$transaction(async (tx) => {
+    // Cambio condicionado al estado leído: si otra petición se adelantó, esta falla en vez de pisarla.
+    const r = await tx.repair.updateMany({ where: { id: repair.id, status: repair.status }, data: { status: i.to } });
+    if (r.count === 0) throw new HttpError(409, 'La reparación cambió de estado, recarga e inténtalo de nuevo', 'STALE_STATE');
+    await tx.repairStatusHistory.create({
+      data: { repairId: repair.id, fromStatus: repair.status, toStatus: i.to, userId: i.actor.userId, comment, origin: i.actor.origin },
+    });
+  });
+  await audit('REPAIR_STATUS_CHANGED', 'Repair', repair.id, i.actor.userId, { from: repair.status, to: i.to, origin: i.actor.origin });
+
+  await notifyCustomer(repair, i.to);
+  return prisma.repair.findUniqueOrThrow({ where: { id: repair.id } });
+}
+
+async function notifyCustomer(
+  repair: { id: number; number: string; customer: { name: string; email: string | null }; tool: { brand: string; model: string } },
+  to: RepairStatus,
+) {
+  const mail = to === 'REPARADO' ? repairFinishedMail : to === 'LISTO_PARA_RETIRAR' ? repairReadyMail : null;
+  if (!mail || !repair.customer.email) return;
+  await sendEmail({
+    to: repair.customer.email,
+    type: to === 'REPARADO' ? 'REPAIR_FINISHED' : 'REPAIR_READY',
+    entity: 'Repair',
+    entityId: String(repair.id),
+    ...mail(repair.customer.name, { number: repair.number, tool: `${repair.tool.brand} ${repair.tool.model}` }),
+  });
+}

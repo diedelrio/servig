@@ -34,5 +34,6 @@ export const requirePermission = (...codes: string[]) => async (req: Request, _r
   if (!u || u.status !== 'ACTIVE') throw new HttpError(401, 'Sesión inválida o expirada');
   const have = new Set(u.role.permissions.map((p) => p.permission.code));
   if (!codes.every((c) => have.has(c))) throw new HttpError(403, 'Sin permiso');
+  req.user!.role = u.role.name; // el rol del token puede estar desactualizado: manda la BD
   next();
 };

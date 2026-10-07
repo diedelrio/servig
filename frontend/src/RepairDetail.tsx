@@ -14,6 +14,7 @@ export type RepairFull = {
   receivedBy: { firstName: string; lastName: string }
   history: { id: number; fromStatus: string | null; toStatus: string; createdAt: string; comment: string | null; origin: string; user: { firstName: string; lastName: string } | null }[]
   attachments: Att[]
+  allowedTransitions: { to: string; label: string; needsComment: boolean }[]
   business: { name: string; address: string; phone: string; receiptTerms: string }
 }
 
@@ -42,6 +43,9 @@ export default function RepairDetail() {
   const [r, setR] = useState<RepairFull | null>(null)
   const [missing, setMissing] = useState(false)
   const [error, setError] = useState('')
+  const [comment, setComment] = useState('')
+  const [actionError, setActionError] = useState('')
+  const [busy, setBusy] = useState(false)
 
   const load = useCallback(() => {
     api.get<RepairFull>(`/repairs/${id}`).then((x) => setR(x.data)).catch(() => setMissing(true))
@@ -57,6 +61,17 @@ export default function RepairDetail() {
     }
     e.target.value = ''
     load()
+  }
+
+  const transition = async (to: string, needsComment: boolean) => {
+    setActionError('')
+    if (needsComment && !comment.trim()) { setActionError('Esta acción requiere un comentario.'); return }
+    setBusy(true)
+    try {
+      await api.post(`/repairs/${id}/transition`, { to, comment })
+      setComment('')
+      load()
+    } catch (e) { setActionError(apiError(e).message); load() } finally { setBusy(false) }
   }
 
   if (missing) return <section><h1>Reparación no encontrada</h1><Link to="/repairs">Volver</Link></section>
@@ -81,6 +96,21 @@ export default function RepairDetail() {
         <dt>Garantía</dt><dd>{r.inWarranty ? 'Sí' : 'No'}{r.inWarranty && !r.requiresQuote && ' · sin presupuesto'}</dd>
         <dt>Observaciones</dt><dd>{r.notes ?? '—'}</dd>
       </dl>
+
+      {r.allowedTransitions.length > 0 && (
+        <div className="panel">
+          <h2>Acciones</h2>
+          <label>Comentario (obligatorio al cancelar o devolver sin reparar)
+            <input value={comment} onChange={(e) => setComment(e.target.value)} maxLength={1000} />
+          </label>
+          <div className="row actionsrow">
+            {r.allowedTransitions.map((t) => (
+              <button key={t.to} disabled={busy} className={t.to === 'CANCELADO' ? 'danger' : undefined} onClick={() => transition(t.to, t.needsComment)}>{t.label}</button>
+            ))}
+          </div>
+          {actionError && <p className="error">{actionError}</p>}
+        </div>
+      )}
 
       <h2>Historial</h2>
       <ol className="timeline">
