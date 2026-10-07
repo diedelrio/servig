@@ -7,6 +7,8 @@ const required = (k: string) => {
 };
 
 export const env = {
+  isProd: process.env.NODE_ENV === 'production',
+  isTest: process.env.NODE_ENV === 'test',
   port: Number(process.env.PORT ?? 3000),
   jwtSecret: required('JWT_SECRET'),
   refreshSecret: required('REFRESH_SECRET'),

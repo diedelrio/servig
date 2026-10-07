@@ -13,15 +13,105 @@ model Settings {
 }
 
 model EmailLog {
-  id        Int      @id @default(autoincrement())
+  id        Int       @id @default(autoincrement())
   to        String
   type      String
   subject   String
   entity    String?
   entityId  String?
-  status    String   @default("PENDING") // PENDING | SENT | FAILED
+  status    String    @default("PENDING") // PENDING | SENT | FAILED
   error     String?
-  attempts  Int      @default(0)
-  createdAt DateTime @default(now())
+  attempts  Int       @default(0)
+  createdAt DateTime  @default(now())
   sentAt    DateTime?
+}
+
+enum UserStatus {
+  PENDING_EMAIL_VERIFICATION
+  ACTIVE
+  DISABLED
+}
+
+model Role {
+  id          Int              @id @default(autoincrement())
+  name        String           @unique // ADMIN | RECEPCION | TECNICO | CLIENTE
+  users       User[]
+  permissions RolePermission[]
+}
+
+model Permission {
+  id    Int              @id @default(autoincrement())
+  code  String           @unique // recurso:accion
+  roles RolePermission[]
+}
+
+model RolePermission {
+  roleId       Int
+  permissionId Int
+  role         Role       @relation(fields: [roleId], references: [id])
+  permission   Permission @relation(fields: [permissionId], references: [id])
+
+  @@id([roleId, permissionId])
+}
+
+model User {
+  id                Int        @id @default(autoincrement())
+  email             String     @unique
+  firstName         String
+  lastName          String
+  passwordHash      String
+  status            UserStatus @default(PENDING_EMAIL_VERIFICATION)
+  emailVerifiedAt   DateTime?
+  lastLoginAt       DateTime?
+  passwordChangedAt DateTime?
+  roleId            Int
+  role              Role       @relation(fields: [roleId], references: [id])
+  createdAt         DateTime   @default(now())
+
+  emailTokens   EmailVerificationToken[]
+  resetTokens   PasswordResetToken[]
+  refreshTokens RefreshToken[]
+}
+
+model EmailVerificationToken {
+  id        Int       @id @default(autoincrement())
+  userId    Int
+  user      User      @relation(fields: [userId], references: [id])
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+}
+
+model PasswordResetToken {
+  id        Int       @id @default(autoincrement())
+  userId    Int
+  user      User      @relation(fields: [userId], references: [id])
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+}
+
+model RefreshToken {
+  id        Int       @id @default(autoincrement())
+  userId    Int
+  user      User      @relation(fields: [userId], references: [id])
+  tokenHash String    @unique
+  expiresAt DateTime
+  revokedAt DateTime?
+  createdAt DateTime  @default(now())
+}
+
+model AuditLog {
+  id        Int      @id @default(autoincrement())
+  userId    Int?
+  action    String
+  entity    String
+  entityId  String?
+  data      Json?
+  ip        String?
+  createdAt DateTime @default(now())
+
+  @@index([entity, entityId])
 }

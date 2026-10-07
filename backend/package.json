@@ -9,7 +9,8 @@
     "build": "tsc",
     "start": "node dist/server.js",
     "typecheck": "tsc --noEmit",
-    "services": "node scripts/dev-services.mjs"
+    "services": "node scripts/dev-services.mjs",
+    "seed": "tsx prisma/seed.ts"
   },
   "keywords": [],
   "author": "",
