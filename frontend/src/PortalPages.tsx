@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { api, apiError } from './api'
+import { useAuth } from './auth'
 import { DecisionControls, QuoteTable, type QuoteItemView } from './QuoteDecision'
 import { QuoteDocumentView } from './QuoteDocument'
 import { ReceiptView, type ReceiptData } from './Receipt'
@@ -31,33 +32,64 @@ const PART_LABEL: Record<string, string> = {
 }
 const QUOTE_LABEL: Record<string, string> = { ENVIADO: 'Pendiente de su respuesta', APROBADO: 'Aprobado', RECHAZADO: 'Rechazado', VENCIDO: 'Vencido' }
 
-// ---------- Lista ----------
+// ---------- Lista e inicio ----------
 
-export function PortalList() {
-  const [rows, setRows] = useState<ListRow[] | null>(null)
-  const [error, setError] = useState('')
-  useEffect(() => { api.get<ListRow[]>('/portal/repairs').then((r) => setRows(r.data)).catch((e) => setError(apiError(e).message)) }, [])
-
-  if (error) return <section><h1>Mis reparaciones</h1><p className="error">{error}</p></section>
-  if (!rows) return <p>Cargando…</p>
-
-  const card = (r: ListRow) => (
-    <Link key={r.id} to={`/portal/repairs/${r.id}`} className={`rcard ${r.pendingQuote ? 'attention' : ''}`}>
+function RepairCard({ r }: { r: ListRow }) {
+  return (
+    <Link to={`/portal/repairs/${r.id}`} className={`rcard ${r.pendingQuote ? 'attention' : ''}`}>
       <div className="row between"><b>{r.number}</b><span className="badge">{STATUS_LABEL[r.status]}</span></div>
       <div>{r.tool.type} {r.tool.brand} {r.tool.model}</div>
       <small>Recibida el {new Date(r.receivedAt).toLocaleDateString()}</small>
       {r.pendingQuote && <div className="callout">Tiene un presupuesto esperando su respuesta</div>}
     </Link>
   )
+}
+
+function useRepairs() {
+  const [rows, setRows] = useState<ListRow[] | null>(null)
+  const [error, setError] = useState('')
+  useEffect(() => { api.get<ListRow[]>('/portal/repairs').then((r) => setRows(r.data)).catch((e) => setError(apiError(e).message)) }, [])
+  return { rows, error }
+}
+
+/** Inicio del portal: lo que requiere atención (presupuestos por responder) y las reparaciones en curso. */
+export function PortalHome() {
+  const { user } = useAuth()
+  const { rows, error } = useRepairs()
+  if (error) return <section><h1>Hola, {user?.firstName}</h1><p className="error">{error}</p></section>
+  if (!rows) return <p>Cargando…</p>
+  const pending = rows.filter((r) => r.pendingQuote)
+  const active = rows.filter((r) => r.active && !r.pendingQuote)
+  return (
+    <section>
+      <h1 className="greeting">Hola, {user?.firstName}</h1>
+      <p className="muted">Aquí puede seguir el estado de sus herramientas en el taller.</p>
+      {pending.length > 0 && (
+        <>
+          <h2>Necesitan su respuesta</h2>
+          <div className="cards">{pending.map((r) => <RepairCard key={r.id} r={r} />)}</div>
+        </>
+      )}
+      <div className="row between"><h2>En curso</h2><Link to="/portal/reparaciones">Ver todas</Link></div>
+      {active.length > 0 ? <div className="cards">{active.map((r) => <RepairCard key={r.id} r={r} />)}</div>
+        : <p>{pending.length ? 'No tiene más reparaciones en curso.' : 'No tiene reparaciones en curso.'}</p>}
+    </section>
+  )
+}
+
+/** Todas las reparaciones: en curso e historial. */
+export function PortalList() {
+  const { rows, error } = useRepairs()
+  if (error) return <section><h1>Mis reparaciones</h1><p className="error">{error}</p></section>
+  if (!rows) return <p>Cargando…</p>
   const active = rows.filter((r) => r.active)
   const history = rows.filter((r) => !r.active)
-
   return (
     <section>
       <h1>Mis reparaciones</h1>
       {!rows.length && <p>Todavía no tiene reparaciones registradas.</p>}
-      {active.length > 0 && <><h2>En curso</h2><div className="cards">{active.map(card)}</div></>}
-      {history.length > 0 && <><h2>Historial</h2><div className="cards">{history.map(card)}</div></>}
+      {active.length > 0 && <><h2>En curso</h2><div className="cards">{active.map((r) => <RepairCard key={r.id} r={r} />)}</div></>}
+      {history.length > 0 && <><h2>Historial</h2><div className="cards">{history.map((r) => <RepairCard key={r.id} r={r} />)}</div></>}
     </section>
   )
 }
@@ -83,13 +115,13 @@ export function PortalRepair() {
     } catch (e) { setError(apiError(e).message) } finally { setBusy(false); load() }
   }
 
-  if (missing) return <section><h1>Reparación no encontrada</h1><Link to="/portal">Volver</Link></section>
+  if (missing) return <section><h1>Reparación no encontrada</h1><Link to="/portal/reparaciones">Volver</Link></section>
   if (!d) return <p>Cargando…</p>
   const q = d.quote
 
   return (
     <section>
-      <p><Link to="/portal">← Mis reparaciones</Link></p>
+      <p><Link to="/portal/reparaciones">← Mis reparaciones</Link></p>
       <div className="row between">
         <h1>{d.number}</h1>
         <span className="badge big">{STATUS_LABEL[d.status]}</span>
