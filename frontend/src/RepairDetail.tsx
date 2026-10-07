@@ -34,7 +34,7 @@ export function Thumb({ url: src, a, children }: { url: string; a: Pick<Att, 'id
   return (
     <figure className="thumb">
       {url && isImg && <a href={url} target="_blank" rel="noreferrer"><img src={url} alt={a.filename} /></a>}
-      {url && !isImg && <a href={url} target="_blank" rel="noreferrer">📄 Abrir PDF</a>}
+      {url && !isImg && <a href={url} download={a.filename}>📄 Descargar PDF</a>}
       <figcaption>{a.filename}</figcaption>
       {children}
     </figure>

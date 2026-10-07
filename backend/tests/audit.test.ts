@@ -178,8 +178,15 @@ describe('autenticación relevante', () => {
     const first = u.cookie!;
     const rotated = await api('/api/auth/refresh', { method: 'POST', cookie: first });
     expect(rotated.status).toBe(200);
-    expect((await api('/api/auth/refresh', { method: 'POST', cookie: first })).status).toBe(401); // reutilización
+    // Reutilización inmediata (p. ej. dos pestañas a la vez): se rechaza, pero no es un robo y no se audita ni se cierran las demás sesiones.
+    expect((await api('/api/auth/refresh', { method: 'POST', cookie: first })).status).toBe(401);
+    expect(await prisma.auditLog.count({ where: { action: 'REFRESH_REUSE_DETECTED', userId: u.id } })).toBe(0);
+    expect((await api('/api/auth/refresh', { method: 'POST', cookie: rotated.cookie })).status).toBe(200);
+    // Reutilización tardía de un token ya rotado: posible robo → se audita y se cierran todas las sesiones.
+    await prisma.refreshToken.updateMany({ where: { userId: u.id, revokedAt: { not: null } }, data: { revokedAt: new Date(Date.now() - 60_000) } });
+    expect((await api('/api/auth/refresh', { method: 'POST', cookie: first })).status).toBe(401);
     expect(await prisma.auditLog.count({ where: { action: 'REFRESH_REUSE_DETECTED', userId: u.id } })).toBe(1);
+    expect(await prisma.refreshToken.count({ where: { userId: u.id, revokedAt: null } })).toBe(0);
   });
 });
 
@@ -251,7 +258,7 @@ describe('cobertura: el ciclo completo deja rastro de cada operación importante
     await api('/api/auth/register', { method: 'POST', body: { firstName: 'C', lastName: 'U', email, password: PW, confirmPassword: PW } });
     const user = await prisma.user.findUniqueOrThrow({ where: { email } });
     const vt = decodeURIComponent(sent.find((m) => m.to === email)!.html.match(/token=([^"]+)"/)![1]);
-    await api('/api/auth/verify-email', { method: 'POST', body: { token: vt } });
+    await api('/api/auth/verify-email', { method: 'POST', body: { token: vt, password: PW } });
     await api('/api/auth/forgot-password', { method: 'POST', body: { email } });
     const rt = decodeURIComponent(sent.filter((m) => m.to === email).at(-1)!.html.match(/token=([^"]+)"/)![1]);
     await api('/api/auth/reset-password', { method: 'POST', body: { token: rt, password: 'NuevaClave123x', confirmPassword: 'NuevaClave123x' } });

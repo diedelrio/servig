@@ -157,10 +157,38 @@ describe('recepción', () => {
 
     const sinGarantia = await reception(rec.token, toolId, { requiresQuote: false });
     expect(sinGarantia.status).toBe(400);
-    const enGarantia = await reception(rec.token, toolId, { inWarranty: true, requiresQuote: false });
-    expect(enGarantia.status).toBe(201);
-    expect(enGarantia.json.requiresQuote).toBe(false);
     expect((await reception(rec.token, toolId)).json.requiresQuote).toBe(true); // por defecto sí
+  });
+
+  it('RN-02: omitir el presupuesto exige una garantía vigente REGISTRADA en la herramienta, no basta con declararla', async () => {
+    const rec = await userWith('RECEPCION');
+    const adm = await userWith('ADMIN');
+    const mkTool = async (warrantyExpiresAt?: string) => {
+      const c = await api('/api/customers', { method: 'POST', auth: rec.token, body: { name: 'C garantía', email: uniq('g') } });
+      const t = await api('/api/tools', { method: 'POST', auth: rec.token, body: { customerId: c.json.id, type: 'T', brand: 'B', model: 'M', ...(warrantyExpiresAt ? { warrantyExpiresAt } : {}) } });
+      return t.json.id as number;
+    };
+    const waive = (who: { token: string }, toolId: number) => reception(who.token, toolId, { inWarranty: true, requiresQuote: false }).then((r) => r);
+
+    // Sin garantía registrada: un recepcionista no puede, aunque marque «en garantía».
+    const noWarranty = await mkTool();
+    const denied = await waive(rec, noWarranty);
+    expect(denied.status).toBe(403);
+    expect(denied.json.code).toBe('WARRANTY_NOT_VERIFIED');
+    // Garantía vencida: igual.
+    expect((await waive(rec, await mkTool('2020-01-01'))).status).toBe(403);
+    // Garantía vigente: puede.
+    const ok = await waive(rec, await mkTool('2999-01-01'));
+    expect(ok.status).toBe(201);
+    expect(ok.json.requiresQuote).toBe(false);
+    // Un ADMIN puede autorizar la excepción, y queda anotada en la auditoría.
+    const exception = await waive(adm, noWarranty);
+    expect(exception.status).toBe(201);
+    const log = await prisma.auditLog.findFirstOrThrow({ where: { action: 'REPAIR_CREATED', entityId: String(exception.json.id) } });
+    expect(log.data).toMatchObject({ quoteWaived: true, warrantyOnFile: false });
+    expect(await prisma.repair.count({ where: { toolId: noWarranty } })).toBe(1); // las denegadas no crearon nada
+    // Con presupuesto requerido (lo normal) no hace falta nada de esto.
+    expect((await reception(rec.token, noWarranty)).status).toBe(201);
   });
 
   it('permisos: TECNICO consulta pero no recepciona; CLIENTE no accede; sin token 401', async () => {

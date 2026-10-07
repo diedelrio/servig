@@ -21,3 +21,6 @@ Páginas por rol, layout responsive, Axios con interceptor de refresh. Rutas pro
 
 ## Despliegue futuro
 Frontend estático (Vercel/Netlify), backend en contenedor, PostgreSQL gestionado, SMTP real, S3/R2.
+
+## Producción (Fase 12)
+Una sola imagen (ver `Dockerfile`): la API sirve el frontend compilado desde `STATIC_DIR` con *fallback* a `index.html` para las rutas del cliente y 404 en JSON para `/api/*`. Misma URL para la app y la API → cookie de refresco `SameSite=Lax` sin CORS. Cabeceras de seguridad con `helmet` (CSP estricta). Detalle operativo en `docs/12-deployment.md`.

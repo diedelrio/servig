@@ -38,3 +38,29 @@ Modelo Role ↔ Permission en BD (`recurso:acción`), asignación por seed; midd
 - **Auditoría de autenticación:** `LOGIN`, `LOGIN_FAILED` (motivo: unknown_user, bad_password, disabled, unverified; con email intentado e IP, nunca la contraseña), `REFRESH_REUSE_DETECTED`, `REGISTER`, `EMAIL_VERIFIED`, `PASSWORD_RESET_REQUESTED`, `PASSWORD_CHANGED`.
 - **IP en toda la auditoría:** se toma de la petición en curso (`AsyncLocalStorage`), sin pasarla a mano. Detrás de un proxy hay que definir `TRUST_PROXY`.
 - Argon2id usa los parámetros por defecto en producción; en tests se abaratan (`NODE_ENV=test`) solo para que la suite no se sature.
+
+## Revisión de seguridad (Fase 12)
+
+Revisión independiente del backend (un agente de solo lectura con instrucciones de buscar fallos explotables) más revisión propia. Resultado: **sin fallos críticos ni altos**; la regla crítica (RN-01) se sostiene. Hallazgos y qué se hizo:
+
+| Hallazgo | Sev. | Resolución |
+|---|---|---|
+| **Pre-secuestro de cuenta:** registrar el email de otra persona con una contraseña propia dejaba la cuenta activa con esa contraseña cuando la víctima hacía clic, y la vinculaba a su ficha de cliente. | Media | Activar exige el **enlace del correo y la contraseña del registro** (`WRONG_PASSWORD` sin gastar el enlace). Quien olvidó su contraseña usa «¿Olvidaste tu contraseña?», que ahora también sirve para cuentas sin confirmar y las activa. |
+| **Enumeración de emails por tiempos** (registro, recuperación y reenvío tardaban distinto si el usuario existía). | Media | Se calcula el mismo hash en ambas ramas y el correo sale **en segundo plano** (`defer`). |
+| **`TRUST_PROXY` opcional:** tras un balanceador el límite de intentos era global y la IP auditada falsa. | Media | En producción es **obligatorio** declararlo; la API no arranca sin él. |
+| **Salto de la aprobación por garantía:** un recepcionista podía crear la reparación con `requiresQuote=false` solo declarando «en garantía». | Media | Exige garantía **vigente registrada** en la herramienta; sin ella solo un ADMIN, y queda anotado en la auditoría (`quoteWaived`). |
+| Carrera al guardar y enviar un borrador a la vez (podían reescribirse líneas de una versión ya enviada; el correo podía anunciar otro total). | Baja | Bloqueo de fila condicionado a `BORRADOR`; el correo y la auditoría usan lo realmente congelado. |
+| Sin límite en `verify-email`/`refresh`; login solo por IP. | Baja | Límites propios y **contador por cuenta** en el login (los accesos correctos no cuentan). |
+| Reutilización de refresh por dos pestañas cerraba todas las sesiones. | Baja | Tolerancia de 10 s; el logout borra el token (reutilizarlo después no dispara el cierre masivo). |
+| `JWT_SECRET` sin mínimo y con valor de ejemplo válido; `REFRESH_SECRET` sin uso. | Baja | En producción: ≥ 32 caracteres, no de ejemplo, https; `REFRESH_SECRET` eliminado. |
+| 500 evitables: `x-filename` mal codificado, importes que desbordaban `Decimal(12,2)`, archivo ausente en disco. | Baja | 400/404 limpios; límites por línea y comprobación del total. |
+| JWT: algoritmo no fijado. | — | `HS256` fijado al firmar y verificar (rechaza `none` y otros). |
+
+Otras defensas añadidas: cabeceras CSP estrictas (sin scripts en línea, sin iframes), `Content-Security-Policy: sandbox` en cada adjunto descargado, límite general por IP, `/api/health` real (base y almacenamiento), rechazo del carácter nulo en cualquier entrada, y el seed no crea administradores con contraseñas débiles en producción.
+
+**Riesgos aceptados / pendientes (conscientes):**
+- La CLI de Prisma arrastra `deepmerge-ts` con un aviso de DoS; solo corre al desplegar con archivos propios.
+- El bloqueo por cuenta (10 fallos / 15 min) permite que un atacante bloquee temporalmente el login de una víctima concreta; se prefirió a permitir fuerza bruta distribuida.
+- El historial de estados y la auditoría son «solo inserción» por diseño de la aplicación, no por restricción de la base de datos (un trigger lo garantizaría a nivel de motor).
+- Un JWT de acceso sigue siendo válido hasta 15 min tras deshabilitar a un usuario, pero toda ruta del personal y del portal relee su estado en la base, así que no tiene efecto.
+- Adjuntos en disco: ver la advertencia de despliegue (volumen persistente, una sola instancia).

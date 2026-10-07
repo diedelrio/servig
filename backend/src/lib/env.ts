@@ -11,7 +11,6 @@ export const env = {
   isTest: process.env.NODE_ENV === 'test',
   port: Number(process.env.PORT ?? 3000),
   jwtSecret: required('JWT_SECRET'),
-  refreshSecret: required('REFRESH_SECRET'),
   frontendUrl: required('FRONTEND_URL'),
   smtp: {
     host: required('SMTP_HOST'),
@@ -21,6 +20,8 @@ export const env = {
   },
   emailFrom: required('EMAIL_FROM'),
   uploadDir: process.env.UPLOAD_DIR ?? './uploads',
+  /** Frontend compilado que la propia API sirve (imagen de producción). Si la carpeta no existe, no se sirve nada. */
+  staticDir: process.env.STATIC_DIR ?? './public',
   quote: {
     defaultTaxRate: Number(process.env.DEFAULT_TAX_RATE ?? 21),
     validDays: Number(process.env.QUOTE_VALID_DAYS ?? 15),
@@ -50,4 +51,26 @@ function overdueDays(): Record<string, number> {
     if (k in d && Number(v) > 0) d[k] = Number(v);
   }
   return d;
+}
+
+/**
+ * En producción se arranca solo si la configuración es segura; es mejor no arrancar que arrancar con un secreto de ejemplo.
+ * Devuelve los problemas encontrados (vacío = todo bien).
+ */
+export function productionProblems(v: NodeJS.ProcessEnv): string[] {
+  const problems: string[] = [];
+  const secret = v.JWT_SECRET ?? '';
+  if (secret.length < 32) problems.push('JWT_SECRET debe tener al menos 32 caracteres');
+  if (/^change-?me/i.test(secret)) problems.push('JWT_SECRET sigue siendo el valor de ejemplo');
+  if (!/^https:\/\//.test(v.FRONTEND_URL ?? '')) problems.push('FRONTEND_URL debe ser una URL https:// (los enlaces de los correos y las cookies seguras lo exigen)');
+  // Sin esto, tras un balanceador toda petición parece venir de la misma IP: el límite de intentos sería global y la IP auditada, falsa.
+  if (v.TRUST_PROXY === undefined || v.TRUST_PROXY === '') problems.push('TRUST_PROXY debe indicarse explícitamente (0 si no hay proxy delante; 1 detrás de un balanceador)');
+  else if (!/^\d+$/.test(v.TRUST_PROXY)) problems.push('TRUST_PROXY debe ser un número entero (nº de proxys de confianza)');
+  if (!v.SMTP_HOST || ['localhost', '127.0.0.1'].includes(v.SMTP_HOST)) problems.push('SMTP_HOST apunta a la máquina local: configura un proveedor de correo real');
+  return problems;
+}
+
+if (process.env.NODE_ENV === 'production') {
+  const problems = productionProblems(process.env);
+  if (problems.length) throw new Error('Configuración de producción insegura:\n - ' + problems.join('\n - '));
 }

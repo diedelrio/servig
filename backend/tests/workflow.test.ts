@@ -52,7 +52,7 @@ let rec: Staff, tec: Staff, adm: Staff, cli: Staff;
 /** Crea una reparación nueva (RECIBIDO) vía API. */
 async function newRepair(over: object = {}) {
   const c = await api('/api/customers', { method: 'POST', auth: rec.token, body: { name: 'Cliente WF', email: uniq('cli') } });
-  const t = await api('/api/tools', { method: 'POST', auth: rec.token, body: { customerId: c.json.id, type: 'Sierra', brand: 'Dewalt', model: 'X1' } });
+  const t = await api('/api/tools', { method: 'POST', auth: rec.token, body: { customerId: c.json.id, type: 'Sierra', brand: 'Dewalt', model: 'X1', warrantyExpiresAt: '2999-12-31' } });
   const r = await api('/api/repairs', { method: 'POST', auth: rec.token, body: { toolId: t.json.id, declaredFault: 'Falla', visualState: 'Ok', ...over } });
   return { id: r.json.id as number, customerEmail: c.json.email as string };
 }

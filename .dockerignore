@@ -1,0 +1,15 @@
+**/node_modules
+**/dist
+**/.env
+**/.env.*
+!**/.env.example
+.git
+.claude
+.vscode
+docs
+backups
+backend/uploads
+backend/tests
+backend/.pgdata
+*.md
+!README.md

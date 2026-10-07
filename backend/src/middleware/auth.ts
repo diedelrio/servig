@@ -12,13 +12,13 @@ declare module 'express-serve-static-core' {
   }
 }
 
-export const signAccess = (u: AuthUser) => jwt.sign({ role: u.role }, env.jwtSecret, { subject: String(u.id), expiresIn: '15m' });
+export const signAccess = (u: AuthUser) => jwt.sign({ role: u.role }, env.jwtSecret, { subject: String(u.id), expiresIn: '15m', algorithm: 'HS256' });
 
 export function requireAuth(req: Request, _res: Response, next: NextFunction) {
   const h = req.headers.authorization;
   if (!h?.startsWith('Bearer ')) throw new HttpError(401, 'No autenticado');
   try {
-    const p = jwt.verify(h.slice(7), env.jwtSecret) as jwt.JwtPayload;
+    const p = jwt.verify(h.slice(7), env.jwtSecret, { algorithms: ['HS256'] }) as jwt.JwtPayload;
     req.user = { id: Number(p.sub), role: p.role };
     next();
   } catch {

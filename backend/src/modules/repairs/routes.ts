@@ -6,6 +6,7 @@ import * as s from './service.js';
 import { createRepairSchema, transitionSchema } from './schemas.js';
 import { transitionRepair } from './workflow.js';
 import { diagnosisSchema } from '../quotes/schemas.js';
+import { sendAttachment } from '../../lib/download.js';
 
 export const repairsRouter = Router();
 repairsRouter.use(requireAuth);
@@ -19,7 +20,7 @@ repairsRouter.get('/', requirePermission('repair:read'), async (req, res) => {
 });
 
 repairsRouter.post('/', requirePermission('repair:create'), validate(createRepairSchema), async (req, res) => {
-  res.status(201).json(await s.createRepair(req.user!.id, req.body));
+  res.status(201).json(await s.createRepair(req.user!.id, req.user!.role, req.body));
 });
 
 repairsRouter.get('/:id', requirePermission('repair:read'), async (req, res) => {
@@ -46,7 +47,13 @@ const rawFile = express.raw({ type: () => true, limit: s.MAX_FILE_BYTES });
 
 repairsRouter.post('/:id/attachments', requirePermission('repair:attach'), rawFile, async (req, res) => {
   if (!Buffer.isBuffer(req.body)) throw new HttpError(400, 'Falta el archivo');
-  const name = decodeURIComponent(str(req.headers['x-filename']) ?? 'archivo');
+  const raw = str(req.headers['x-filename']) ?? 'archivo';
+  let name = raw;
+  try {
+    name = decodeURIComponent(raw);
+  } catch {
+    /* un % suelto no es una codificación válida: se usa el texto tal cual en vez de fallar con un 500 */
+  }
   res.status(201).json(await s.addAttachment(req.user!.id, num(req.params.id), name, req.body));
 });
 
@@ -56,9 +63,5 @@ repairsRouter.patch('/:id/attachments/:attId', requirePermission('repair:attach'
 
 repairsRouter.get('/:id/attachments/:attId', requirePermission('repair:read'), async (req, res) => {
   const { meta, stream } = await s.getAttachment(num(req.params.id), num(req.params.attId));
-  res.setHeader('Content-Type', meta.mime);
-  res.setHeader('Content-Length', meta.size);
-  res.setHeader('Content-Disposition', `inline; filename*=UTF-8''${encodeURIComponent(meta.filename)}`);
-  res.setHeader('Cache-Control', 'private, max-age=3600');
-  stream.pipe(res);
+  sendAttachment(res, meta, stream);
 });

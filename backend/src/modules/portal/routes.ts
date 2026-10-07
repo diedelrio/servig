@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { validate } from '../../lib/http.js';
 import { limit } from '../../lib/rateLimit.js';
 import { requireAuth, requireCustomer } from '../../middleware/auth.js';
+import { sendAttachment } from '../../lib/download.js';
 import * as s from './service.js';
 
 export const portalRouter = Router();
@@ -20,11 +21,7 @@ portalRouter.get('/repairs/:id', async (req, res) => {
 
 portalRouter.get('/repairs/:id/attachments/:attId', async (req, res) => {
   const { meta, stream } = await s.getAttachment(req.customerId!, id(req.params.id), id(req.params.attId));
-  res.setHeader('Content-Type', meta.mime);
-  res.setHeader('Content-Length', meta.size);
-  res.setHeader('Content-Disposition', `inline; filename*=UTF-8''${encodeURIComponent(meta.filename)}`);
-  res.setHeader('Cache-Control', 'private, max-age=3600');
-  stream.pipe(res);
+  sendAttachment(res, meta, stream);
 });
 
 const decisionSchema = z.object({ decision: z.enum(['APPROVE', 'REJECT']), comment: z.string().trim().max(1000).optional() });

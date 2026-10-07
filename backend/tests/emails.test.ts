@@ -258,7 +258,7 @@ describe('cobertura de correos transaccionales', () => {
     await api('/api/auth/forgot-password', { method: 'POST', body: { email: customerEmail } }); // no activo → sin correo
     const verifyMail = transport.sent.find((m) => m.to === customerEmail)!;
     const vt = decodeURIComponent(verifyMail.html.match(/token=([^"]+)"/)![1]);
-    await api('/api/auth/verify-email', { method: 'POST', body: { token: vt } });
+    await api('/api/auth/verify-email', { method: 'POST', body: { token: vt, password: PW } });
     await api('/api/auth/forgot-password', { method: 'POST', body: { email: customerEmail } }); // AUTH_PASSWORD_RESET
     const rt = decodeURIComponent(transport.sent.filter((m) => m.to === customerEmail).at(-1)!.html.match(/token=([^"]+)"/)![1]);
     await api('/api/auth/reset-password', { method: 'POST', body: { token: rt, password: 'OtraClave123x', confirmPassword: 'OtraClave123x' } }); // AUTH_PASSWORD_CHANGED

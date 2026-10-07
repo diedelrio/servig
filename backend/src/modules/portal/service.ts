@@ -86,7 +86,7 @@ export async function getAttachment(customerId: number, repairId: number, attId:
   await ownRepair(customerId, repairId);
   const a = await prisma.attachment.findFirst({ where: { id: attId, repairId, visibleToCustomer: true } });
   if (!a) throw new HttpError(404, 'Documento no encontrado');
-  return { meta: a, stream: storage.read(a.storageKey) };
+  return { meta: a, stream: await storage.read(a.storageKey) };
 }
 
 /** Decisión desde el portal: mismo núcleo que el enlace, con el usuario autenticado y origen CUSTOMER_PORTAL. */

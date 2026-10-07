@@ -202,7 +202,7 @@ describe('vinculación cuenta CLIENTE ↔ cliente por email (RN-09)', () => {
     const c = await newCustomer(rec.token, { email });
     await api('/api/auth/register', { method: 'POST', body: { firstName: 'R', lastName: 'G', email, password: PW, confirmPassword: PW } });
     const token = decodeURIComponent(sent.find((m) => m.to === email)!.html.match(/token=([^"]+)"/)![1]);
-    await api('/api/auth/verify-email', { method: 'POST', body: { token } });
+    await api('/api/auth/verify-email', { method: 'POST', body: { token, password: PW } });
     const login = await api('/api/auth/login', { method: 'POST', body: { email, password: PW } });
     expect(login.json.user.customerId).toBe(c.json.id);
   });

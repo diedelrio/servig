@@ -27,6 +27,8 @@ export const registerSchema = z
 
 export const emailOnlySchema = z.object({ email });
 export const tokenSchema = z.object({ token: z.string().min(1) });
+// Activar la cuenta exige el enlace del correo Y la contraseña con la que se registró (ver verifyEmail).
+export const verifyEmailSchema = z.object({ token: z.string().min(1), password: z.string().min(1).max(128) });
 export const loginSchema = z.object({ email, password: z.string().min(1) });
 export const resetSchema = z
   .object({ token: z.string().min(1), password: passwordSchema, confirmPassword: z.string() })

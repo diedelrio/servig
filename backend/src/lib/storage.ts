@@ -1,8 +1,9 @@
 import { randomUUID } from 'node:crypto';
 import { createReadStream } from 'node:fs';
-import { mkdir, writeFile } from 'node:fs/promises';
+import { access, mkdir, writeFile } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
 import { env } from './env.js';
+import { HttpError } from './http.js';
 
 /**
  * Interfaz mínima de almacenamiento. Hoy usa disco; para S3/R2 se reemplazan estas
@@ -18,8 +19,14 @@ export async function save(data: Buffer, ext: string): Promise<string> {
   return key;
 }
 
-export function read(key: string) {
+export async function read(key: string) {
   const path = resolve(root(), key);
   if (!path.startsWith(root())) throw new Error('Ruta de almacenamiento inválida'); // defensa ante claves manipuladas
+  // Si el registro existe pero el archivo no (disco restaurado a medias, volumen sin montar…) se responde 404 en vez de fallar a mitad.
+  try {
+    await access(path);
+  } catch {
+    throw new HttpError(404, 'El archivo no está disponible', 'FILE_MISSING');
+  }
   return createReadStream(path);
 }

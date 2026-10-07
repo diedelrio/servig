@@ -3,12 +3,14 @@ import { prisma } from '../../lib/prisma.js';
 import { sendEmail } from '../../lib/email.js';
 import { audit } from '../../lib/audit.js';
 import { HttpError } from '../../lib/http.js';
+import { defer } from '../../lib/background.js';
 import { DUMMY_HASH, days, hashPassword, hashToken, minutes, newToken, verifyPassword } from '../../lib/security.js';
 import { passwordChangedMail, resetPasswordMail, verifyEmailMail } from '../../lib/emailTemplates.js';
 import { signAccess } from '../../middleware/auth.js';
 import { linkCustomerByEmail } from '../../lib/customerLink.js';
 
 const COOLDOWN_MS = 60_000;
+const REUSE_GRACE_MS = 10_000;
 const since = () => new Date(Date.now() - COOLDOWN_MS);
 const INVALID_LINK = new HttpError(400, 'Enlace inválido o vencido', 'INVALID_TOKEN');
 
@@ -25,7 +27,10 @@ type RegisterInput = { firstName: string; lastName: string; email: string; passw
 
 /** Siempre responde igual al llamador: no revela si el email ya existe. */
 export async function register(i: RegisterInput, ip?: string) {
-  if (await prisma.user.findUnique({ where: { email: i.email } })) return;
+  if (await prisma.user.findUnique({ where: { email: i.email } })) {
+    await hashPassword(i.password); // mismo coste que el alta: el tiempo de respuesta no delata que el email ya existe
+    return;
+  }
   const role = await prisma.role.findUniqueOrThrow({ where: { name: 'CLIENTE' } });
   const passwordHash = await hashPassword(i.password);
   let user;
@@ -38,11 +43,24 @@ export async function register(i: RegisterInput, ip?: string) {
     throw e;
   }
   await audit('REGISTER', 'User', user.id, user.id, undefined, ip);
-  await sendVerification(user);
+  await defer(() => sendVerification(user));
 }
 
-export async function verifyEmail(token: string) {
+/**
+ * Activa la cuenta. Exige el enlace del correo (solo lo tiene el dueño del buzón) Y la contraseña del registro (solo la conoce
+ * quien se registró). Así nadie puede registrar el email de otra persona con una contraseña propia y esperar a que ella haga clic.
+ * Si el registrante no recuerda su contraseña puede usar «¿Olvidaste tu contraseña?», que también prueba el control del buzón.
+ */
+export async function verifyEmail(token: string, password: string) {
   const h = hashToken(token);
+  const link = await prisma.emailVerificationToken.findFirst({
+    where: { tokenHash: h, usedAt: null, expiresAt: { gt: new Date() } },
+    include: { user: true },
+  });
+  // Siempre se calcula un hash, exista el enlace o no: el tiempo no distingue.
+  const ok = await verifyPassword(link?.user.passwordHash ?? DUMMY_HASH, password);
+  if (!link) throw INVALID_LINK;
+  if (!ok) throw new HttpError(400, 'La contraseña no coincide con la que usaste al registrarte', 'WRONG_PASSWORD'); // el enlace sigue vigente: puede reintentar
   const userId = await prisma.$transaction(async (tx) => {
     // Consumo atómico: solo una petición puede marcar el token como usado.
     const r = await tx.emailVerificationToken.updateMany({
@@ -64,8 +82,10 @@ export async function verifyEmail(token: string) {
 export async function resendVerification(email: string) {
   const user = await prisma.user.findUnique({ where: { email } });
   if (!user || user.status !== 'PENDING_EMAIL_VERIFICATION') return;
-  if (await prisma.emailVerificationToken.findFirst({ where: { userId: user.id, createdAt: { gt: since() } } })) return;
-  await sendVerification(user);
+  await defer(async () => {
+    if (await prisma.emailVerificationToken.findFirst({ where: { userId: user.id, createdAt: { gt: since() } } })) return;
+    await sendVerification(user);
+  });
 }
 
 async function issueSession(user: { id: number; role: { name: string } }) {
@@ -106,7 +126,9 @@ export async function refresh(raw: string | undefined) {
   const rec = await prisma.refreshToken.findUnique({ where: { tokenHash: hashToken(raw) }, include: { user: { include: userInclude } } });
   if (!rec) throw new HttpError(401, 'No autenticado');
   if (rec.revokedAt) {
-    // Reutilización de un token ya rotado: posible robo, se cierran todas las sesiones.
+    // Dos pestañas que refrescan casi a la vez usan el mismo token: dentro de unos segundos es una carrera legítima, no un robo.
+    if (Date.now() - rec.revokedAt.getTime() < REUSE_GRACE_MS) throw new HttpError(401, 'No autenticado');
+    // Reutilización tardía de un token ya rotado: posible robo, se cierran todas las sesiones.
     await prisma.refreshToken.updateMany({ where: { userId: rec.userId, revokedAt: null }, data: { revokedAt: new Date() } });
     await audit('REFRESH_REUSE_DETECTED', 'User', rec.userId, rec.userId);
     throw new HttpError(401, 'No autenticado');
@@ -119,7 +141,8 @@ export async function refresh(raw: string | undefined) {
 
 export async function logout(raw: string | undefined) {
   if (!raw) return;
-  await prisma.refreshToken.updateMany({ where: { tokenHash: hashToken(raw), revokedAt: null }, data: { revokedAt: new Date() } });
+  // Se borra (no se marca revocado): reutilizar luego esa cookie es un simple 401 y no cierra las demás sesiones.
+  await prisma.refreshToken.deleteMany({ where: { tokenHash: hashToken(raw) } });
 }
 
 export async function me(id: number) {
@@ -131,7 +154,12 @@ export async function me(id: number) {
 /** Respuesta idéntica exista o no el usuario. */
 export async function forgotPassword(email: string, ip?: string) {
   const user = await prisma.user.findUnique({ where: { email } });
-  if (!user || user.status !== 'ACTIVE') return;
+  // Las cuentas sin confirmar también pueden recuperar: el enlace prueba el control del buzón y al definir la contraseña se activan.
+  if (!user || user.status === 'DISABLED') return;
+  await defer(() => issueReset(user, ip));
+}
+
+async function issueReset(user: { id: number; email: string; firstName: string }, ip?: string) {
   if (await prisma.passwordResetToken.findFirst({ where: { userId: user.id, createdAt: { gt: since() } } })) return;
   await prisma.passwordResetToken.updateMany({ where: { userId: user.id, usedAt: null }, data: { usedAt: new Date() } });
   const token = newToken();

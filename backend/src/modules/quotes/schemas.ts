@@ -8,8 +8,8 @@ const money = (max: number) =>
 const item = z.object({
   type: z.enum(['LABOR', 'PART', 'OTHER']),
   description: z.string().trim().min(1, 'Describe el concepto').max(300),
-  quantity: money(100_000).refine((n) => n > 0, 'La cantidad debe ser mayor que 0'),
-  unitPrice: money(10_000_000).refine((n) => n >= 0, 'El precio no puede ser negativo'),
+  quantity: money(9_999).refine((n) => n > 0, 'La cantidad debe ser mayor que 0'),
+  unitPrice: money(999_999.99).refine((n) => n >= 0, 'El precio no puede ser negativo'),
   taxRate: money(100).refine((n) => n >= 0, 'IVA inválido').default(env.quote.defaultTaxRate),
 });
 

@@ -60,8 +60,14 @@ const requireReview = (status: string) => {
   if (status !== 'EN_REVISION') throw new HttpError(409, 'La reparación debe estar en revisión para preparar el presupuesto', 'NOT_IN_REVIEW');
 };
 
+// Las columnas son Decimal(12,2): por encima se desbordaría la base de datos (y daría un 500).
+const MAX_TOTAL = new Prisma.Decimal('9999999999.99');
+
 const itemRows = (items: ItemInput[]) => {
   const t = computeTotals(items);
+  if (t.subtotal.gt(MAX_TOTAL) || t.taxTotal.gt(MAX_TOTAL) || t.total.gt(MAX_TOTAL)) {
+    throw new HttpError(400, 'El importe total del presupuesto es demasiado grande', 'AMOUNT_TOO_LARGE');
+  }
   return {
     totals: { subtotal: t.subtotal, taxTotal: t.taxTotal, total: t.total },
     rows: items.map((i, idx) => ({
@@ -90,6 +96,10 @@ export async function saveDraft(userId: number, repairId: number, input: { items
     }
     const cur = currentOf(quote);
     if (cur.status !== 'BORRADOR') throw new HttpError(409, 'El presupuesto ya fue enviado: crea una nueva versión para modificarlo', 'QUOTE_LOCKED');
+    // Bloquea la fila condicionada a BORRADOR: si send() la congela en este instante, o ganamos nosotros (y send() congela lo que
+    // dejamos) o perdemos y fallamos aquí. Sin esto se podían reescribir las líneas de una versión ya enviada.
+    const lock = await tx.quoteVersion.updateMany({ where: { id: cur.id, status: 'BORRADOR' }, data: { notes } });
+    if (lock.count === 0) throw new HttpError(409, 'El presupuesto ya fue enviado: crea una nueva versión para modificarlo', 'QUOTE_LOCKED');
     await tx.quoteItem.deleteMany({ where: { versionId: cur.id } });
     await tx.quoteItem.createMany({ data: rows.map((r) => ({ ...r, versionId: cur.id })) });
     await tx.quoteVersion.update({ where: { id: cur.id }, data: { ...totals, notes } });
@@ -153,12 +163,14 @@ export async function send(userId: number, role: string, repairId: number) {
       token = await issueLink(tx, cur.id, validUntil);
     },
   });
-  await audit('QUOTE_SENT', 'Repair', repairId, userId, { version: cur.version, total: money(cur.total), validUntil });
+  // Lo que quedó congelado es lo que se comunica (pudo cambiar entre la primera lectura y la transacción).
+  const frozen = await prisma.quoteVersion.findUniqueOrThrow({ where: { id: cur.id } });
+  await audit('QUOTE_SENT', 'Repair', repairId, userId, { version: cur.version, total: money(frozen.total), validUntil });
 
   await sendEmail({
     to: repair.customer.email, type: 'QUOTE_AVAILABLE', entity: 'Repair', entityId: String(repairId),
     ...quoteAvailableMail(repair.customer.name, {
-      number: repair.number, tool: `${repair.tool.brand} ${repair.tool.model}`, total: money(cur.total), validUntil, approvalUrl: approvalUrl(token),
+      number: repair.number, tool: `${repair.tool.brand} ${repair.tool.model}`, total: money(frozen.total), validUntil, approvalUrl: approvalUrl(token),
     }),
   });
   return getQuote(repairId);

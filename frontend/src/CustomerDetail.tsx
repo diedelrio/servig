@@ -15,11 +15,19 @@ const QSTATUS: Record<string, string> = { BORRADOR: 'Borrador', ENVIADO: 'Enviad
 const eur = (n: string) => `${Number(n).toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €`
 
 /** Los documentos requieren sesión, así que se descargan con el token y se abren como blob. */
-function OpenDoc({ repairId, doc }: { repairId: number; doc: { id: number; filename: string } }) {
+function OpenDoc({ repairId, doc }: { repairId: number; doc: { id: number; filename: string; mime: string } }) {
   const open = async () => {
     const r = await api.get(`/repairs/${repairId}/attachments/${doc.id}`, { responseType: 'blob' })
     const url = URL.createObjectURL(r.data)
-    window.open(url, '_blank', 'noopener')
+    if (doc.mime === 'application/pdf') {
+      // Los PDF se descargan: la política de seguridad de contenido no permite incrustarlos desde una pestaña blob:.
+      const a = document.createElement('a')
+      a.href = url
+      a.download = doc.filename
+      a.click()
+    } else {
+      window.open(url, '_blank', 'noopener')
+    }
     setTimeout(() => URL.revokeObjectURL(url), 60_000)
   }
   return <button className="link" onClick={open}>{doc.filename}</button>

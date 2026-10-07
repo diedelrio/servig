@@ -49,7 +49,7 @@ async function customerWithTool(tag: string, taxId?: string) {
 /** Crea una reparación y la deja en `status` directamente (la matriz del workflow se prueba en otro archivo). */
 async function repairIn(c: { customerId: number; toolId: number }, status: RepairStatus, over: { requiresQuote?: boolean; daysAgo?: number } = {}) {
   const r = await api('/api/repairs', {
-    method: 'POST', auth: rec.token,
+    method: 'POST', auth: over.requiresQuote === false ? adm.token : rec.token, // omitir el presupuesto sin garantía registrada lo autoriza un ADMIN
     body: { toolId: c.toolId, declaredFault: 'f', visualState: 'v', ...(over.requiresQuote === false ? { inWarranty: true, requiresQuote: false } : {}) },
   });
   const id = r.json.id as number;

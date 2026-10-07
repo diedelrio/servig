@@ -29,9 +29,17 @@ type CreateInput = {
   inWarranty: boolean; requiresQuote: boolean
 }
 
-export async function createRepair(userId: number, i: CreateInput) {
+export async function createRepair(userId: number, role: string, i: CreateInput) {
   const tool = await prisma.tool.findUnique({ where: { id: i.toolId }, include: { customer: true } });
   if (!tool) throw new HttpError(404, 'Herramienta no encontrada');
+
+  // RN-02: omitir el presupuesto es excepcional. «En garantía» es lo que declara quien recepciona, así que no basta: la herramienta
+  // debe tener registrada una garantía vigente. Sin ella solo un ADMIN puede omitirlo (queda anotado en la auditoría).
+  const today = new Date(new Date().toISOString().slice(0, 10) + 'T00:00:00Z');
+  const warrantyOnFile = !!tool.warrantyExpiresAt && tool.warrantyExpiresAt >= today;
+  if (!i.requiresQuote && !warrantyOnFile && role !== 'ADMIN') {
+    throw new HttpError(403, 'La herramienta no tiene una garantía vigente registrada: sin ella la reparación requiere presupuesto (un administrador puede autorizar la excepción)', 'WARRANTY_NOT_VERIFIED');
+  }
 
   const repair = await prisma.$transaction(async (tx) => {
     const r = await tx.repair.create({
@@ -52,7 +60,10 @@ export async function createRepair(userId: number, i: CreateInput) {
     return r;
   });
 
-  await audit('REPAIR_CREATED', 'Repair', repair.id, userId, { number: repair.number, toolId: tool.id, customerId: tool.customerId });
+  await audit('REPAIR_CREATED', 'Repair', repair.id, userId, {
+    number: repair.number, toolId: tool.id, customerId: tool.customerId,
+    ...(i.requiresQuote ? {} : { quoteWaived: true, warrantyOnFile }), // excepción a RN-01: queda a la vista de la auditoría
+  });
   if (tool.customer.email) {
     await sendEmail({
       to: tool.customer.email, type: 'REPAIR_RECEIVED', entity: 'Repair', entityId: String(repair.id),
@@ -123,7 +134,7 @@ export async function addAttachment(userId: number, repairId: number, filename: 
 export async function getAttachment(repairId: number, id: number) {
   const a = await prisma.attachment.findFirst({ where: { id, repairId } });
   if (!a) throw new HttpError(404, 'Adjunto no encontrado');
-  return { meta: a, stream: storage.read(a.storageKey) };
+  return { meta: a, stream: await storage.read(a.storageKey) };
 }
 
 const FINAL = ['ENTREGADO', 'CANCELADO'];

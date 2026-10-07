@@ -1,0 +1,4 @@
+# Los scripts y el Dockerfile deben llevar saltos de línea LF: con CRLF no arrancan en Linux.
+*.sh text eol=lf
+Dockerfile text eol=lf
+.dockerignore text eol=lf

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react'
+import { useState, type FormEvent, type ReactNode } from 'react'
 import { Link, Navigate, useNavigate, useSearchParams } from 'react-router-dom'
 import { api, apiError, type ApiError } from './api'
 import { useAuth } from './auth'
@@ -66,22 +66,21 @@ export function Register() {
 }
 
 export function VerifyEmail() {
-  const token = useSearchParams()[0].get('token')
-  const [state, setState] = useState<'loading' | 'ok' | 'error'>(token ? 'loading' : 'error')
-  const [msg, setMsg] = useState('')
-  const called = useRef(false) // StrictMode ejecuta el efecto dos veces; el token es de un solo uso
-  useEffect(() => {
-    if (!token || called.current) return
-    called.current = true
-    api.post('/auth/verify-email', { token })
-      .then((r) => { setMsg(r.data.message); setState('ok') })
-      .catch((e) => { setMsg(apiError(e).message); setState('error') })
-  }, [token])
+  const token = useSearchParams()[0].get('token') ?? ''
+  // Activar la cuenta exige el enlace del correo Y la contraseña del registro: así nadie puede registrar el email de otra persona.
+  const f = useForm(async (d) => (await api.post('/auth/verify-email', { token, password: d.password })).data.message)
+  if (!token) return <Card title="Confirmación de email"><p className="error">Enlace incompleto.</p><Link to="/resend-verification">Reenviar correo de confirmación</Link></Card>
+  if (f.message) return <Card title="Cuenta activada"><p>{f.message}</p><Link to="/login">Iniciar sesión</Link></Card>
   return (
-    <Card title="Confirmación de email">
-      {state === 'loading' && <p>Verificando…</p>}
-      {state === 'ok' && <><p>{msg}</p><Link to="/login">Iniciar sesión</Link></>}
-      {state === 'error' && <><p className="error">{msg || 'Enlace inválido.'}</p><Link to="/resend-verification">Reenviar correo de confirmación</Link></>}
+    <Card title="Confirma tu cuenta">
+      <p>Para activarla, introduce la contraseña con la que te registraste.</p>
+      <form onSubmit={f.submit}>
+        <Field label="Contraseña" name="password" type="password" autoComplete="current-password" />
+        {f.error && <p className="error">{f.error.message}</p>}
+        <button disabled={f.busy}>Activar cuenta</button>
+      </form>
+      <p><Link to="/forgot-password">¿No la recuerdas? Recupérala y tu cuenta quedará activada</Link></p>
+      {f.error?.code === 'INVALID_TOKEN' && <p><Link to="/resend-verification">Reenviar correo de confirmación</Link></p>}
     </Card>
   )
 }
