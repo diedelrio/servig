@@ -154,6 +154,7 @@ export function ResetPassword() {
 
 export function Home() {
   const { user } = useAuth()
+  if (user?.role === 'CLIENTE') return <Navigate to="/portal" replace />
   return (
     <section>
       <h1>Hola, {user?.firstName}</h1>

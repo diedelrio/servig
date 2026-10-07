@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState, type ChangeEvent } from 'react'
+import { useCallback, useEffect, useState, type ChangeEvent, type ReactNode } from 'react'
 import { Link, useLocation, useParams } from 'react-router-dom'
 import { api, apiError } from './api'
 import { useAuth } from './auth'
@@ -7,7 +7,7 @@ import type { Tool } from './ToolForm'
 import { DiagnosisPanel, QuotePanel } from './RepairPanels'
 import { SparePartsPanel } from './SparePartsPanel'
 
-type Att = { id: number; filename: string; mime: string; size: number; createdAt: string }
+type Att = { id: number; filename: string; mime: string; size: number; createdAt: string; visibleToCustomer?: boolean }
 export type RepairFull = {
   id: number; number: string; status: string; receivedAt: string; declaredFault: string; visualState: string
   accessories: string | null; notes: string | null; inWarranty: boolean; requiresQuote: boolean
@@ -22,19 +22,20 @@ export type RepairFull = {
 }
 
 /** Los adjuntos requieren el token, así que se descargan como blob y no con <img src>. */
-function Thumb({ repairId, a }: { repairId: number; a: Att }) {
+export function Thumb({ url: src, a, children }: { url: string; a: Pick<Att, 'id' | 'filename' | 'mime'>; children?: ReactNode }) {
   const [url, setUrl] = useState<string>()
   useEffect(() => {
     let revoke: string | undefined
-    api.get(`/repairs/${repairId}/attachments/${a.id}`, { responseType: 'blob' }).then((r) => { revoke = URL.createObjectURL(r.data); setUrl(revoke) }).catch(() => {})
+    api.get(src, { responseType: 'blob' }).then((r) => { revoke = URL.createObjectURL(r.data); setUrl(revoke) }).catch(() => {})
     return () => { if (revoke) URL.revokeObjectURL(revoke) }
-  }, [repairId, a.id])
+  }, [src])
   const isImg = a.mime.startsWith('image/')
   return (
     <figure className="thumb">
       {url && isImg && <a href={url} target="_blank" rel="noreferrer"><img src={url} alt={a.filename} /></a>}
       {url && !isImg && <a href={url} target="_blank" rel="noreferrer">📄 Abrir PDF</a>}
       <figcaption>{a.filename}</figcaption>
+      {children}
     </figure>
   )
 }
@@ -135,7 +136,14 @@ export default function RepairDetail() {
       </div>
       {error && <p className="error">{error}</p>}
       <div className="thumbs">
-        {r.attachments.map((a) => <Thumb key={a.id} repairId={r.id} a={a} />)}
+        {r.attachments.map((a) => (
+          <Thumb key={a.id} url={`/repairs/${r.id}/attachments/${a.id}`} a={a}>
+            {can('repair:attach') && (
+              <label className="check"><input type="checkbox" checked={!!a.visibleToCustomer}
+                onChange={(e) => api.patch(`/repairs/${r.id}/attachments/${a.id}`, { visibleToCustomer: e.target.checked }).then(load).catch((err) => setError(apiError(err).message))} /> <small>Visible al cliente</small></label>
+            )}
+          </Thumb>
+        ))}
         {!r.attachments.length && <p>Sin adjuntos.</p>}
       </div>
     </section>

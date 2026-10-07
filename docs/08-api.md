@@ -30,8 +30,10 @@ El portal (Fase 9) usará el mismo núcleo `decideQuote` con origen CUSTOMER_POR
 GET `/repairs/:id/spare-parts` (lista + resumen: pendientes, sin instalar, totales sin cancelados) · POST `/repairs/:id/spare-parts` · PATCH `/spare-parts/:id` (solo mientras no esté INSTALADO/CANCELADO) · POST `/spare-parts/:id/status` {to, date?}
 Permisos: `part:read` (ADMIN, RECEPCION, TECNICO) y `part:write` (ADMIN, TECNICO).
 
-## Portal cliente
-GET `/portal/repairs` · GET `/portal/repairs/:id`
+## Portal cliente (Fase 9)
+Requiere sesión de una cuenta CLIENTE vinculada a un cliente (403 `NO_CUSTOMER_LINK` si no lo está; 403 para el personal). Todo se filtra por el cliente de la sesión y lo ajeno responde 404.
+GET `/portal/repairs` (activas e historial; `pendingQuote`) · GET `/portal/repairs/:id` (estado, línea de tiempo solo con estado y fecha, diagnósticos visibles, presupuesto vigente enviado con `canDecide`, repuestos sin importes, documentos visibles, datos del resguardo) · GET `/portal/repairs/:id/attachments/:attId` (solo los marcados visibles) · POST `/portal/repairs/:id/quote/decision` {decision, comment?} (mismo núcleo que el enlace, origen CUSTOMER_PORTAL con el usuario).
+Personal: PATCH `/repairs/:id/attachments/:attId` {visibleToCustomer} (permiso `repair:attach`).
 
 ## Otros
 GET `/dashboard` · GET `/search?q=` · GET `/audit` (ADMIN) · GET `/email-logs` (ADMIN)

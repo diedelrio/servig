@@ -88,7 +88,7 @@ export async function getRepair(id: number, role: string) {
       tool: true,
       receivedBy: { select: { firstName: true, lastName: true } },
       history: { orderBy: { createdAt: 'asc' }, include: { user: { select: { firstName: true, lastName: true } } } },
-      attachments: { orderBy: { createdAt: 'asc' }, select: { id: true, filename: true, mime: true, size: true, createdAt: true } },
+      attachments: { orderBy: { createdAt: 'asc' }, select: { id: true, filename: true, mime: true, size: true, createdAt: true, visibleToCustomer: true } },
       diagnoses: { orderBy: { createdAt: 'asc' }, include: { author: { select: { firstName: true, lastName: true } } } },
     },
   });
@@ -135,4 +135,16 @@ export async function addDiagnosis(userId: number, repairId: number, i: { text: 
   });
   await audit('DIAGNOSIS_ADDED', 'Repair', repairId, userId, { diagnosisId: d.id, visibleToCustomer: d.visibleToCustomer });
   return d;
+}
+
+/** El taller decide qué documentos ve el cliente en su portal (por defecto, ninguno). */
+export async function setAttachmentVisibility(userId: number, repairId: number, attId: number, visible: boolean) {
+  const a = await prisma.attachment.findFirst({ where: { id: attId, repairId } });
+  if (!a) throw new HttpError(404, 'Adjunto no encontrado');
+  const u = await prisma.attachment.update({
+    where: { id: attId }, data: { visibleToCustomer: visible },
+    select: { id: true, filename: true, mime: true, size: true, createdAt: true, visibleToCustomer: true },
+  });
+  await audit('ATTACHMENT_VISIBILITY', 'Repair', repairId, userId, { attachmentId: attId, visibleToCustomer: visible });
+  return u;
 }

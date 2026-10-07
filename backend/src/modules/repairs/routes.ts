@@ -1,4 +1,5 @@
 import express, { Router } from 'express';
+import { z } from 'zod';
 import { HttpError, validate } from '../../lib/http.js';
 import { requireAuth, requirePermission } from '../../middleware/auth.js';
 import * as s from './service.js';
@@ -47,6 +48,10 @@ repairsRouter.post('/:id/attachments', requirePermission('repair:attach'), rawFi
   if (!Buffer.isBuffer(req.body)) throw new HttpError(400, 'Falta el archivo');
   const name = decodeURIComponent(str(req.headers['x-filename']) ?? 'archivo');
   res.status(201).json(await s.addAttachment(req.user!.id, num(req.params.id), name, req.body));
+});
+
+repairsRouter.patch('/:id/attachments/:attId', requirePermission('repair:attach'), validate(z.object({ visibleToCustomer: z.boolean() })), async (req, res) => {
+  res.json(await s.setAttachmentVisibility(req.user!.id, num(req.params.id), num(req.params.attId), req.body.visibleToCustomer));
 });
 
 repairsRouter.get('/:id/attachments/:attId', requirePermission('repair:read'), async (req, res) => {

@@ -8,6 +8,7 @@ export type AuthUser = { id: number; role: string };
 declare module 'express-serve-static-core' {
   interface Request {
     user?: AuthUser;
+    customerId?: number;
   }
 }
 
@@ -37,3 +38,15 @@ export const requirePermission = (...codes: string[]) => async (req: Request, _r
   req.user!.role = u.role.name; // el rol del token puede estar desactualizado: manda la BD
   next();
 };
+
+/** Portal: solo cuentas CLIENTE activas y vinculadas a un cliente. Lee la BD en cada petición. */
+export async function requireCustomer(req: Request, _res: Response, next: NextFunction) {
+  const u = await prisma.user.findUnique({ where: { id: req.user!.id }, include: { role: true } });
+  if (!u || u.status !== 'ACTIVE') throw new HttpError(401, 'Sesión inválida o expirada');
+  if (u.role.name !== 'CLIENTE') throw new HttpError(403, 'Esta sección es solo para clientes');
+  if (!u.customerId) {
+    throw new HttpError(403, 'Tu cuenta aún no está vinculada a un cliente del taller. Si ya nos dejaste una herramienta, contacta con nosotros para verificar tu email.', 'NO_CUSTOMER_LINK');
+  }
+  req.customerId = u.customerId;
+  next();
+}

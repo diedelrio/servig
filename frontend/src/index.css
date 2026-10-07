@@ -106,3 +106,18 @@ h3 { font-size: 1rem; margin: 12px 0 6px; }
 .big { font-size: 1.15rem; font-weight: 600; }
 
 tr.struck td { text-decoration: line-through; color: var(--muted); }
+
+/* Portal del cliente (pensado para móvil) */
+.cards { display: grid; gap: 12px; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); }
+.rcard { display: grid; gap: 4px; padding: 14px; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; color: var(--text); text-decoration: none; }
+.rcard:hover { border-color: var(--primary); }
+.rcard.attention { border-color: #b26a00; box-shadow: 0 0 0 1px #b26a00; }
+.callout { padding: 8px 10px; background: color-mix(in srgb, #b26a00 14%, transparent); border-radius: 6px; font-weight: 600; }
+ul.plain { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.badge.big { font-size: .95rem; padding: 4px 12px; }
+@media (max-width: 600px) {
+  .page { padding: 14px; }
+  .topbar { padding: 10px 14px; gap: 10px; }
+  button, .btn { min-height: 44px; }
+  .row { gap: 8px; }
+}

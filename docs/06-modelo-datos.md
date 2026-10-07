@@ -14,7 +14,7 @@ Fuente de verdad: `backend/prisma/schema.prisma`. Resumen:
 - **Quote** (repairId, status, currentVersion), **QuoteVersion**, **QuoteItem** (tipo LABOR|PART|OTHER, qty, precio, IVA%), **QuoteApproval** (versión, decisión, fecha, origen, IP)
 - **QuoteLinkToken** (token de aprobación por enlace)
 - **RepairSparePart** (código, descripción, proveedor, cantidad, coste y precio unitarios, estado, fechas de pedido y recepción). No hay catálogo `SparePart` en el MVP: se añadirá si se necesita autocompletar o stock.
-- **Attachment** (repairId, path, mime, size)
+- **Attachment** (repairId, path, mime, size, visibleToCustomer — privado por defecto)
 - **EmailLog** (destinatario, tipo, asunto, entidad, resultado, error, intentos) — absorbe Notification
 - **AuditLog**
 - **Counter** (numeración anual), **Settings** (IVA por defecto, vencimientos)
