@@ -72,12 +72,15 @@ async function issueSession(user: { id: number; role: { name: string } }) {
   return { accessToken: signAccess({ id: user.id, role: user.role.name }), refresh };
 }
 
-const publicUser = (u: { id: number; email: string; firstName: string; lastName: string; role: { name: string } }) => ({
+export const userInclude = { role: { include: { permissions: { include: { permission: true } } } } } as const;
+
+const publicUser = (u: Prisma.UserGetPayload<{ include: typeof userInclude }>) => ({
   id: u.id, email: u.email, firstName: u.firstName, lastName: u.lastName, role: u.role.name,
+  permissions: u.role.permissions.map((p) => p.permission.code),
 });
 
 export async function login(email: string, password: string, ip?: string) {
-  const user = await prisma.user.findUnique({ where: { email }, include: { role: true } });
+  const user = await prisma.user.findUnique({ where: { email }, include: userInclude });
   // Se verifica siempre un hash para que el tiempo no delate si el usuario existe.
   const ok = await verifyPassword(user?.passwordHash ?? DUMMY_HASH, password);
   if (!user || !ok || user.status === 'DISABLED') throw new HttpError(401, 'Credenciales inválidas');
@@ -91,7 +94,7 @@ export async function login(email: string, password: string, ip?: string) {
 
 export async function refresh(raw: string | undefined) {
   if (!raw) throw new HttpError(401, 'No autenticado');
-  const rec = await prisma.refreshToken.findUnique({ where: { tokenHash: hashToken(raw) }, include: { user: { include: { role: true } } } });
+  const rec = await prisma.refreshToken.findUnique({ where: { tokenHash: hashToken(raw) }, include: { user: { include: userInclude } } });
   if (!rec) throw new HttpError(401, 'No autenticado');
   if (rec.revokedAt) {
     // Reutilización de un token ya rotado: posible robo, se cierran todas las sesiones.
@@ -110,7 +113,7 @@ export async function logout(raw: string | undefined) {
 }
 
 export async function me(id: number) {
-  const u = await prisma.user.findUnique({ where: { id }, include: { role: true } });
+  const u = await prisma.user.findUnique({ where: { id }, include: userInclude });
   if (!u || u.status !== 'ACTIVE') throw new HttpError(401, 'No autenticado');
   return publicUser(u);
 }
@@ -139,6 +142,8 @@ export async function resetPassword(token: string, password: string, ip?: string
     const t = await tx.passwordResetToken.findUniqueOrThrow({ where: { tokenHash: h } });
     const u = await tx.user.update({ where: { id: t.userId }, data: { passwordHash, passwordChangedAt: new Date() } });
     await tx.refreshToken.updateMany({ where: { userId: u.id, revokedAt: null }, data: { revokedAt: new Date() } });
+    // El enlace llegó por email: también prueba la propiedad del correo (caso invitaciones del ADMIN).
+    await tx.user.updateMany({ where: { id: u.id, status: 'PENDING_EMAIL_VERIFICATION' }, data: { status: 'ACTIVE', emailVerifiedAt: new Date() } });
     return u;
   });
   await audit('PASSWORD_CHANGED', 'User', user.id, user.id, undefined, ip);

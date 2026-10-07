@@ -16,7 +16,13 @@ export const resetPasswordMail = (name: string, token: string) => ({
     <p>El enlace vence en 1 hora. Si no fuiste tú, ignora este mensaje.</p>`),
 });
 
-export const passwordChangedMail = (name: string) => ({
+export const inviteMail = (name: string, role: string, token: string) => ({
+  subject: 'Te invitamos a Servig',
+  html: wrap(`<p>Hola ${name}, se creó tu cuenta con el rol <b>${role}</b>. Define tu contraseña para activarla:</p>
+    <p><a href="${link('/reset-password', token)}">Definir contraseña</a></p><p>El enlace vence en 72 horas.</p>`),
+});
+
+export const passwordChangedMail =(name: string) => ({
   subject: 'Tu contraseña fue cambiada',
   html: wrap(`<p>Hola ${name}, tu contraseña se cambió correctamente. Si no fuiste tú, contacta con el taller.</p>`),
 });

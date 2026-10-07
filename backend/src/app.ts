@@ -6,6 +6,7 @@ import { env } from './lib/env.js';
 import { prisma } from './lib/prisma.js';
 import { HttpError } from './lib/http.js';
 import { authRouter } from './modules/auth/routes.js';
+import { usersRouter } from './modules/users/routes.js';
 
 export const app = express();
 
@@ -20,6 +21,7 @@ app.get('/api/health', async (_req, res) => {
 });
 
 app.use('/api/auth', authRouter);
+app.use('/api/users', usersRouter);
 
 app.use((err: Error, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
   if (err instanceof HttpError) {

@@ -4,7 +4,7 @@
 POST `/auth/register` · POST `/auth/verify-email` · POST `/auth/resend-verification` · POST `/auth/login` · POST `/auth/refresh` · POST `/auth/logout` · POST `/auth/forgot-password` · POST `/auth/reset-password` · GET `/auth/me`
 
 ## Usuarios (ADMIN)
-GET/POST `/users` · PATCH `/users/:id` (rol, estado)
+GET `/users?search&role&status` · POST `/users` (crea e invita por email) · PATCH `/users/:id` (rol, estado; no sobre uno mismo) · POST `/users/:id/resend-invite`
 
 ## Clientes y herramientas
 CRUD `/customers`, GET `/customers/:id` (con herramientas, reparaciones, presupuestos) · CRUD `/tools`

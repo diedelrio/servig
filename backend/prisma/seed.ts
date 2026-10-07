@@ -1,13 +1,11 @@
 import 'dotenv/config';
 import { PrismaClient } from '@prisma/client';
 import { hashPassword } from '../src/lib/security.js';
+import { seedRolesAndPermissions } from '../src/lib/seedRoles.js';
 
 const prisma = new PrismaClient();
 
-// Los permisos finos (recurso:accion) se irán sembrando por fase; por ahora solo roles.
-const ROLES = ['ADMIN', 'RECEPCION', 'TECNICO', 'CLIENTE'];
-
-for (const name of ROLES) await prisma.role.upsert({ where: { name }, update: {}, create: { name } });
+await seedRolesAndPermissions(prisma);
 
 const email = process.env.SEED_ADMIN_EMAIL;
 const password = process.env.SEED_ADMIN_PASSWORD;

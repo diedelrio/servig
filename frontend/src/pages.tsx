@@ -153,13 +153,11 @@ export function ResetPassword() {
 }
 
 export function Home() {
-  const { user, loading, logout } = useAuth()
-  if (loading) return <Card title="Cargando…"><p /></Card>
-  if (!user) return <Navigate to="/login" replace />
+  const { user } = useAuth()
   return (
-    <Card title={`Hola, ${user.firstName}`}>
-      <p>Sesión iniciada como <b>{user.email}</b> ({user.role}).</p>
-      <button onClick={logout}>Cerrar sesión</button>
-    </Card>
+    <section>
+      <h1>Hola, {user?.firstName}</h1>
+      <p>Sesión iniciada como <b>{user?.email}</b> ({user?.role}).</p>
+    </section>
   )
 }

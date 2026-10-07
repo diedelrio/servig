@@ -2,6 +2,7 @@ import type { NextFunction, Request, Response } from 'express';
 import jwt from 'jsonwebtoken';
 import { env } from '../lib/env.js';
 import { HttpError } from '../lib/http.js';
+import { prisma } from '../lib/prisma.js';
 
 export type AuthUser = { id: number; role: string };
 declare module 'express-serve-static-core' {
@@ -24,7 +25,14 @@ export function requireAuth(req: Request, _res: Response, next: NextFunction) {
   }
 }
 
-export const requireRole = (...roles: string[]) => (req: Request, _res: Response, next: NextFunction) => {
-  if (!req.user || !roles.includes(req.user.role)) throw new HttpError(403, 'Sin permiso');
+/** Lee rol y permisos de la BD en cada petición: deshabilitar o cambiar de rol surte efecto de inmediato. */
+export const requirePermission = (...codes: string[]) => async (req: Request, _res: Response, next: NextFunction) => {
+  const u = await prisma.user.findUnique({
+    where: { id: req.user!.id },
+    include: { role: { include: { permissions: { include: { permission: true } } } } },
+  });
+  if (!u || u.status !== 'ACTIVE') throw new HttpError(401, 'Sesión inválida o expirada');
+  const have = new Set(u.role.permissions.map((p) => p.permission.code));
+  if (!codes.every((c) => have.has(c))) throw new HttpError(403, 'Sin permiso');
   next();
 };

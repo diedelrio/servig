@@ -6,6 +6,7 @@ type Ctx = {
   loading: boolean
   login: (email: string, password: string) => Promise<void>
   logout: () => Promise<void>
+  can: (permission: string) => boolean
 }
 const AuthCtx = createContext<Ctx>(null!)
 export const useAuth = () => useContext(AuthCtx)
@@ -29,5 +30,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setAccessToken(null)
     setUser(null)
   }
-  return <AuthCtx.Provider value={{ user, loading, login, logout }}>{children}</AuthCtx.Provider>
+  // Solo para mostrar u ocultar UI; la autorización real la hace el backend.
+  const can = (permission: string) => !!user?.permissions.includes(permission)
+  return <AuthCtx.Provider value={{ user, loading, login, logout, can }}>{children}</AuthCtx.Provider>
 }
