@@ -104,8 +104,11 @@ export function ResendVerification() {
 export function Login() {
   const { user, login } = useAuth()
   const nav = useNavigate()
-  const f = useForm(async (d) => { await login(d.email, d.password); nav('/') })
-  if (user) return <Navigate to="/" replace />
+  // Tras entrar vuelve a donde iba (p. ej. al presupuesto), solo a rutas internas.
+  const next = useSearchParams()[0].get('next')
+  const dest = next?.startsWith('/') && !next.startsWith('//') && !next.startsWith('/\\') ? next : '/'
+  const f = useForm(async (d) => { await login(d.email, d.password); nav(dest) })
+  if (user) return <Navigate to={dest} replace />
   return (
     <Card title="Iniciar sesión">
       <form onSubmit={f.submit}>
@@ -117,6 +120,7 @@ export function Login() {
       </form>
       <p><Link to="/forgot-password">¿Olvidaste tu contraseña?</Link></p>
       <p><Link to="/register">Crear cuenta</Link></p>
+      <p className="muted">¿Sin cuenta? <Link to="/solicitar">Pedir una reparación</Link> · <Link to="/consulta">Consultar una reparación</Link></p>
     </Card>
   )
 }

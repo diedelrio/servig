@@ -19,7 +19,7 @@ export async function globalSearch(raw: string) {
       select: { id: true, name: true, taxId: true, email: true, phone: true },
     }),
     prisma.repair.findMany({
-      where: { OR: [{ number: has }, { customer: { name: has } }, { tool: { OR: [{ type: has }, { brand: has }, { model: has }, { serialNumber: has }] } }] },
+      where: { OR: [{ number: has }, { accountingReceipt: has }, { customer: { name: has } }, { tool: { OR: [{ type: has }, { brand: has }, { model: has }, { serialNumber: has }] } }] },
       orderBy: { receivedAt: 'desc' }, take: LIMIT,
       select: { id: true, number: true, status: true, customer: { select: { name: true } }, tool: { select: { type: true, brand: true, model: true } } },
     }),

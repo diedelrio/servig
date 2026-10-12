@@ -290,12 +290,12 @@ describe('decisión desde el portal', () => {
       expect(again.json.code).toBe('ALREADY_DECIDED');
     }
     const viaLink = await api(`/api/public/quote-approval/${encodeURIComponent(token)}/decision`, { method: 'POST', body: { decision: 'REJECT' } });
-    expect(viaLink.status).toBe(409);
+    expect(viaLink.status).toBe(409); // ya decidido; con el presupuesto abierto respondería 403 (el enlace no decide)
     expect((await api(`/api/public/quote-approval/${encodeURIComponent(token)}`)).json.state).toBe('DECIDED');
     expect(await prisma.quoteApproval.count({ where: { version: { quote: { repairId: c.repairId } } } })).toBe(1);
   });
 
-  it('portal y enlace a la vez: gana una sola decisión', async () => {
+  it('portal y enlace a la vez: decide el portal; el enlace nunca decide', async () => {
     const c = await client();
     await sendQuote(c.repairId);
     const token = decodeURIComponent(sent.find((m) => m.to === c.email && m.type === 'QUOTE_AVAILABLE')!.html.match(/quote-approval\?token=([^"]+)"/)![1]);
@@ -303,7 +303,8 @@ describe('decisión desde el portal', () => {
       decide(c.repairId, c.account, 'APPROVE'),
       api(`/api/public/quote-approval/${encodeURIComponent(token)}/decision`, { method: 'POST', body: { decision: 'REJECT' } }),
     ]);
-    expect([a.status, b.status].sort()).toEqual([200, 409]);
+    expect(a.status).toBe(200);
+    expect([403, 409]).toContain(b.status); // 403 si llegó antes de que decidiera el portal, 409 si después
     expect(await prisma.quoteApproval.count({ where: { version: { quote: { repairId: c.repairId } } } })).toBe(1);
   });
 

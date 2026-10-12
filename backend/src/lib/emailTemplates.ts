@@ -37,12 +37,32 @@ export const repairRequestedMail = (name: string, r: { number: string; tool: str
     <p>Traiga la herramienta al taller para que la recibamos y la revisemos. Le avisaremos cuando el presupuesto esté disponible; no se realizará ninguna reparación sin su aprobación.</p>`),
 });
 
+export const publicRequestConfirmMail = (name: string, token: string, hours: number) => ({
+  subject: 'Confirme su solicitud de reparación',
+  html: wrap(`<p>Hola ${esc(name)}, recibimos una solicitud de reparación con este correo. Para registrarla confirme que fue usted:</p>
+    <p><a href="${link('/solicitud/confirmar', token)}">Confirmar mi solicitud</a></p>
+    <p>El enlace vence en ${hours} horas. Si no fue usted, ignore este mensaje: no se registrará nada.</p>`),
+});
+
+export const repairStatusLinkMail = (
+  name: string,
+  r: { number: string; token: string; hours: number; welcome?: boolean; tool?: string; fault?: string },
+) => ({
+  subject: r.welcome ? `Solicitud registrada · ${r.number}` : `Consulta de su reparación · ${r.number}`,
+  html: wrap(`<p>Hola ${esc(name)}, ${r.welcome ? 'hemos registrado su solicitud de reparación.' : 'este es su enlace para consultar el estado de su reparación.'}</p>
+    <p><b>Número de resguardo:</b> ${r.number}${r.tool ? `<br><b>Herramienta:</b> ${esc(r.tool)}` : ''}${r.fault ? `<br><b>Avería indicada:</b> ${esc(r.fault)}` : ''}</p>
+    ${r.welcome ? '<p>Traiga la herramienta al taller para que la recibamos y la revisemos.</p>' : ''}
+    <p><a href="${link('/consulta', r.token)}">Ver el estado de mi reparación</a></p>
+    <p>El enlace es personal y vence en ${r.hours} horas; puede volver a pedir otro con su número de resguardo y este correo.</p>
+    <p>Para aprobar o rechazar un presupuesto necesita un usuario: cree su cuenta con este mismo correo y verá todas sus reparaciones.</p>`),
+});
+
 /** El enlace de aprobación (Fase 7) se pasa en approvalUrl; sin él, el correo es solo informativo. */
 export const quoteAvailableMail = (name: string, q: { number: string; tool: string; total: string; validUntil: Date; approvalUrl?: string }) => ({
   subject: `Presupuesto disponible · ${q.number}`,
   html: wrap(`<p>Hola ${esc(name)}, ya está disponible el presupuesto de su ${esc(q.tool)} (${esc(q.number)}).</p>
     <p><b>Total (IVA incluido):</b> ${esc(q.total)} €<br><b>Válido hasta:</b> ${q.validUntil.toLocaleDateString('es-ES')}</p>
-    ${q.approvalUrl ? `<p><a href="${q.approvalUrl}">Ver y aprobar o rechazar el presupuesto</a></p>` : ''}
+    ${q.approvalUrl ? `<p><a href="${q.approvalUrl}">Ver el presupuesto</a></p><p>Para aprobarlo o rechazarlo debe iniciar sesión con su usuario (si aún no tiene, cree la cuenta con este mismo email).</p>` : ''}
     <p>No se realizará ninguna reparación sin su aprobación expresa.</p>`),
 });
 

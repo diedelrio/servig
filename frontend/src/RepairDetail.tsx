@@ -14,7 +14,8 @@ export type RepairFull = {
   accessories: string | null; notes: string | null; inWarranty: boolean; requiresQuote: boolean
   customer: { id: number; name: string; taxId: string | null; email: string | null; phone: string | null; address: string | null }
   tool: Tool
-  receivedBy: { firstName: string; lastName: string }
+  receivedBy: { firstName: string; lastName: string } | null // nulo en las solicitudes de la web pública
+  accountingReceipt: string | null
   history: { id: number; fromStatus: string | null; toStatus: string; createdAt: string; comment: string | null; origin: string; user: { firstName: string; lastName: string } | null }[]
   attachments: Att[]
   diagnoses: { id: number; text: string; visibleToCustomer: boolean; createdAt: string; author: { firstName: string; lastName: string } }[]
@@ -38,6 +39,36 @@ export function Thumb({ url: src, a, children }: { url: string; a: Pick<Att, 'id
       <figcaption>{a.filename}</figcaption>
       {children}
     </figure>
+  )
+}
+
+/** Nº de resguardo del sistema contable: lo escribe a mano el personal con permiso para relacionar ambos sistemas. */
+function AccountingReceipt({ repairId, value, onSaved }: { repairId: number; value: string | null; onSaved: () => void }) {
+  const { can } = useAuth()
+  const [draft, setDraft] = useState<string | null>(null)
+  const [error, setError] = useState('')
+  const save = async () => {
+    setError('')
+    try { await api.put(`/repairs/${repairId}/accounting-receipt`, { number: draft }); setDraft(null); onSaved() } catch (e) { setError(apiError(e).message) }
+  }
+  if (draft === null) {
+    return (
+      <>
+        {value ?? '—'}{' '}
+        {can('repair:accounting') && <button className="link" onClick={() => setDraft(value ?? '')}>{value ? 'Editar' : 'Agregar'}</button>}
+      </>
+    )
+  }
+  return (
+    <>
+      <span className="row">
+        <input value={draft} maxLength={40} autoFocus placeholder="Nº del sistema contable" onChange={(e) => setDraft(e.target.value)}
+          onKeyDown={(e) => { if (e.key === 'Enter') save(); if (e.key === 'Escape') setDraft(null) }} />
+        <button onClick={save}>Guardar</button>
+        <button className="link" onClick={() => setDraft(null)}>Cancelar</button>
+      </span>
+      {error && <small className="error">{error}</small>}
+    </>
   )
 }
 
@@ -97,7 +128,8 @@ export default function RepairDetail() {
       <dl className="panel details">
         <dt>Cliente</dt><dd><Link to={`/customers/${r.customer.id}`}>{r.customer.name}</Link> {r.customer.phone && `· ${r.customer.phone}`}</dd>
         <dt>Herramienta</dt><dd>{r.tool.type} {r.tool.brand} {r.tool.model} {r.tool.serialNumber && `· S/N ${r.tool.serialNumber}`}</dd>
-        <dt>Recibida</dt><dd>{fmtDateTime(r.receivedAt)} por {r.receivedBy.firstName} {r.receivedBy.lastName}</dd>
+        <dt>Recibida</dt><dd>{fmtDateTime(r.receivedAt)}{r.receivedBy ? ` por ${r.receivedBy.firstName} ${r.receivedBy.lastName}` : ' · solicitud web'}</dd>
+        <dt>Resguardo contable</dt><dd><AccountingReceipt repairId={r.id} value={r.accountingReceipt} onSaved={load} /></dd>
         <dt>Avería declarada</dt><dd>{r.declaredFault}</dd>
         <dt>Estado visual</dt><dd>{r.visualState}</dd>
         <dt>Accesorios</dt><dd>{r.accessories ?? '—'}</dd>

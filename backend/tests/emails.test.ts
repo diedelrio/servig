@@ -98,7 +98,7 @@ describe('envío y registro', () => {
   });
 
   it('los correos con enlaces de un solo uso se envían pero NO guardan su cuerpo', async () => {
-    expect([...SENSITIVE_TYPES].sort()).toEqual(['AUTH_INVITE', 'AUTH_PASSWORD_RESET', 'AUTH_VERIFY_EMAIL', 'QUOTE_AVAILABLE']);
+    expect([...SENSITIVE_TYPES].sort()).toEqual(['AUTH_INVITE', 'AUTH_PASSWORD_RESET', 'AUTH_VERIFY_EMAIL', 'PUBLIC_REQUEST_CONFIRM', 'QUOTE_AVAILABLE', 'REPAIR_STATUS_LINK']);
     for (const type of SENSITIVE_TYPES) {
       const to = uniq('sens');
       expect(await send(type, to, '<a href="https://x/y?token=SECRETO123">enlace</a>')).toBe(true);
@@ -265,13 +265,13 @@ describe('cobertura de correos transaccionales', () => {
 
     const c = await api('/api/customers', { method: 'POST', auth: staffToken, body: { name: 'Cobertura', email: customerEmail } });
     const t = await api('/api/tools', { method: 'POST', auth: staffToken, body: { customerId: c.json.id, type: 'T', brand: 'B', model: 'M' } });
+    const cli = (await api('/api/auth/login', { method: 'POST', body: { email: customerEmail, password: 'OtraClave123x' } })).json.accessToken as string; // la ficha vinculó su cuenta: decide con usuario (RN-35)
     const r = await api('/api/repairs', { method: 'POST', auth: staffToken, body: { toolId: t.json.id, declaredFault: 'f', visualState: 'v' } }); // REPAIR_RECEIVED
     const id = r.json.id;
     await api(`/api/repairs/${id}/transition`, { method: 'POST', auth: tec.token, body: { to: 'EN_REVISION' } });
     await api(`/api/repairs/${id}/quote`, { method: 'PUT', auth: tec.token, body: { items: [{ type: 'LABOR', description: 'x', quantity: 1, unitPrice: 10, taxRate: 21 }] } });
     await api(`/api/repairs/${id}/quote/send`, { method: 'POST', auth: tec.token }); // QUOTE_AVAILABLE
-    const link = transport.sent.filter((m) => m.to === customerEmail).at(-1)!.html.match(/quote-approval\?token=([^"]+)"/)![1];
-    await api(`/api/public/quote-approval/${link}/decision`, { method: 'POST', body: { decision: 'APPROVE' } }); // QUOTE_APPROVED
+    await api(`/api/portal/repairs/${id}/quote/decision`, { method: 'POST', auth: cli, body: { decision: 'APPROVE' } }); // QUOTE_APPROVED
     await api(`/api/repairs/${id}/transition`, { method: 'POST', auth: tec.token, body: { to: 'EN_REPARACION' } });
     await api(`/api/repairs/${id}/transition`, { method: 'POST', auth: tec.token, body: { to: 'REPARADO' } }); // REPAIR_FINISHED
     await api(`/api/repairs/${id}/transition`, { method: 'POST', auth: tec.token, body: { to: 'LISTO_PARA_RETIRAR' } }); // REPAIR_READY
@@ -281,8 +281,7 @@ describe('cobertura de correos transaccionales', () => {
     await api(`/api/repairs/${r2.json.id}/transition`, { method: 'POST', auth: tec.token, body: { to: 'EN_REVISION' } });
     await api(`/api/repairs/${r2.json.id}/quote`, { method: 'PUT', auth: tec.token, body: { items: [{ type: 'LABOR', description: 'x', quantity: 1, unitPrice: 10, taxRate: 21 }] } });
     await api(`/api/repairs/${r2.json.id}/quote/send`, { method: 'POST', auth: tec.token });
-    const link2 = transport.sent.filter((m) => m.to === customerEmail).at(-1)!.html.match(/quote-approval\?token=([^"]+)"/)![1];
-    await api(`/api/public/quote-approval/${link2}/decision`, { method: 'POST', body: { decision: 'REJECT' } }); // QUOTE_REJECTED
+    await api(`/api/portal/repairs/${r2.json.id}/quote/decision`, { method: 'POST', auth: cli, body: { decision: 'REJECT' } }); // QUOTE_REJECTED
 
     // reenvío de la confirmación de registro
     const pend = uniq('pend');

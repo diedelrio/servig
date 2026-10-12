@@ -76,7 +76,7 @@ export async function viewByLink(token: string) {
   const base = {
     state,
     business: { name: business.name, phone: business.phone },
-    repair: { number: repair.number },
+    repair: { id: repair.id, number: repair.number },
     customerName: repair.customer.name,
     tool: `${repair.tool.brand} ${repair.tool.model}`,
   };
@@ -170,10 +170,13 @@ export async function decideQuote(i: DecideInput) {
   return { decision, repairNumber: repair.number };
 }
 
-/** Decisión desde el enlace público. */
-export async function decideByLink(token: string, decision: 'APPROVE' | 'REJECT', meta: { comment?: string; ip?: string; userAgent?: string }) {
+/**
+ * El enlace del correo ya no decide: aprobar o rechazar exige haber iniciado sesión con la cuenta del cliente (RN-19, ver RN-35).
+ * Se mantiene la ruta para que un enlace viejo explique qué hacer en vez de fallar sin más.
+ */
+export async function decideByLink(token: string) {
   const l = await loadLink(token);
   const state = stateOf(l);
   if (state !== 'OPEN') throw new HttpError(409, ...STATE_ERROR[state]);
-  return decideQuote({ versionId: l.versionId, decision, origin: 'CUSTOMER_LINK', linkTokenId: l.id, ...meta });
+  throw new HttpError(403, 'Para aprobar o rechazar el presupuesto inicie sesión con su usuario', 'LOGIN_REQUIRED');
 }

@@ -49,3 +49,6 @@ GET `/repairs?filter=overdue|pendingQuote` se combina con `status` y `search`: e
 Catálogos: GET `/catalogs` (permiso `tool:read`) · POST/PUT/DELETE `/catalogs/{brands,types}[/:id]` {name} · POST/PUT/DELETE `/catalogs/models[/:id]` {name, brandId, toolTypeId} (solo ADMIN). Las herramientas aceptan `modelId` en lugar de type/brand/model.
 
 Portal (nuevos): GET `/portal/tools` · POST `/portal/tools` (modelId o type/brand/model) · GET `/portal/catalogs` · POST `/portal/repairs` {toolId, declaredFault, notes?} → SOLICITADA · POST `/portal/repairs/:id/cancel`. El personal registra la recepción con POST `/repairs/:id/transition` {to:"RECIBIDO", reception:{visualState, accessories?}}.
+
+Web pública (sin sesión): GET `/public/catalogs` · POST `/public/requests` {name,email,phone?,modelId|type+brand+model,serialNumber?,declaredFault,notes?} → 202 (genérico) · POST `/public/requests/confirm` {token} → {number} · POST `/public/lookup` {receipt,email} → 202 (genérico) · GET `/public/status/:token` (solo lectura). El enlace de presupuesto `POST /public/quote-approval/:token/decision` ya no decide: 403 `LOGIN_REQUIRED` (RN-35).
+Resguardo contable: PUT `/repairs/:id/accounting-receipt` {number|""} (permiso `repair:accounting`).

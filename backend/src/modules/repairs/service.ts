@@ -85,6 +85,7 @@ export async function listRepairs(q: { status?: string; search?: string; custome
     const contains = { contains: q.search, mode: 'insensitive' as const };
     where.OR = [
       { number: contains },
+      { accountingReceipt: contains },
       { customer: { name: contains } },
       { tool: { OR: [{ brand: contains }, { model: contains }, { serialNumber: contains }, { type: contains }] } },
     ];
@@ -164,4 +165,13 @@ export async function setAttachmentVisibility(userId: number, repairId: number, 
   });
   await audit('ATTACHMENT_VISIBILITY', 'Repair', repairId, userId, { attachmentId: attId, visibleToCustomer: visible });
   return u;
+}
+
+/** Nº de resguardo del sistema contable: lo escribe el personal a mano; vacío lo quita. Cada cambio queda auditado. */
+export async function setAccountingReceipt(userId: number, repairId: number, value: string | null) {
+  const before = await prisma.repair.findUnique({ where: { id: repairId }, select: { accountingReceipt: true } });
+  if (!before) throw new HttpError(404, 'Reparación no encontrada');
+  const r = await prisma.repair.update({ where: { id: repairId }, data: { accountingReceipt: value }, select: { id: true, accountingReceipt: true } });
+  if (before.accountingReceipt !== value) await audit('REPAIR_ACCOUNTING_RECEIPT_SET', 'Repair', repairId, userId, { from: before.accountingReceipt, to: value });
+  return r;
 }

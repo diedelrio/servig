@@ -18,10 +18,5 @@ publicQuoteRouter.get('/:token', async (req, res) => {
 });
 
 publicQuoteRouter.post('/:token/decision', validate(decisionSchema), async (req, res) => {
-  const r = await approval.decideByLink(String(req.params.token), req.body.decision, {
-    comment: req.body.comment,
-    ip: req.ip,
-    userAgent: req.get('user-agent'),
-  });
-  res.json({ message: req.body.decision === 'APPROVE' ? 'Presupuesto aprobado' : 'Presupuesto rechazado', ...r });
+  await approval.decideByLink(String(req.params.token));
 });

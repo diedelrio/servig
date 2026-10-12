@@ -1,12 +1,12 @@
 import { useEffect, useState } from 'react'
-import { useSearchParams } from 'react-router-dom'
-import { api, apiError } from './api'
-import { DecisionControls, QuoteTable, type QuoteItemView } from './QuoteDecision'
+import { Link, useSearchParams } from 'react-router-dom'
+import { api } from './api'
+import { QuoteTable, type QuoteItemView } from './QuoteDecision'
 
 type View = {
   state: 'OPEN' | 'DECIDED' | 'WITHDRAWN' | 'EXPIRED' | 'REPLACED' | 'LINK_EXPIRED'
   business: { name: string; phone: string }
-  repair: { number: string }
+  repair: { id: number; number: string }
   customerName: string
   tool: string
   quote?: { version: number; notes: string | null; validUntil: string | null; subtotal: string; taxTotal: string; total: string; items: QuoteItemView[] }
@@ -22,30 +22,16 @@ const MESSAGE: Record<Exclude<View['state'], 'OPEN' | 'DECIDED'>, string> = {
   LINK_EXPIRED: 'El enlace venció. Contacte con el taller para que le envíen uno nuevo.',
 }
 
-/** Página pública (sin sesión): el cliente revisa el presupuesto y lo aprueba o rechaza con el enlace del correo. */
+/** Página pública (sin sesión): el cliente revisa el presupuesto con el enlace del correo; para decidir debe iniciar sesión. */
 export default function QuoteApproval() {
   const token = useSearchParams()[0].get('token') ?? ''
   const [v, setV] = useState<View | null>(null)
   const [error, setError] = useState(token ? '' : 'Enlace incompleto.')
-  const [busy, setBusy] = useState(false)
-  const [done, setDone] = useState<'APROBADO' | 'RECHAZADO' | null>(null)
 
   useEffect(() => {
     if (!token) return
     api.get<View>(`/public/quote-approval/${encodeURIComponent(token)}`).then((r) => setV(r.data)).catch(() => setError('Este enlace no es válido.'))
   }, [token])
-
-  const decide = async (decision: 'APPROVE' | 'REJECT', comment?: string) => {
-    setBusy(true)
-    setError('')
-    try {
-      await api.post(`/public/quote-approval/${encodeURIComponent(token)}/decision`, { decision, comment: decision === 'REJECT' ? comment : undefined })
-      setDone(decision === 'APPROVE' ? 'APROBADO' : 'RECHAZADO')
-    } catch (e) {
-      setError(apiError(e).message)
-      api.get<View>(`/public/quote-approval/${encodeURIComponent(token)}`).then((r) => setV(r.data)).catch(() => {})
-    } finally { setBusy(false) }
-  }
 
   if (error && !v) return <main className="card"><h1>Presupuesto</h1><p className="error">{error}</p></main>
   if (!v) return <main className="card"><p>Cargando…</p></main>
@@ -57,16 +43,6 @@ export default function QuoteApproval() {
       <p>Hola <b>{v.customerName}</b>, este es el presupuesto para su <b>{v.tool}</b>.</p>
     </>
   )
-
-  if (done) {
-    return (
-      <main className="card wide">
-        {head}
-        <p className="ok big">{done === 'APROBADO' ? '✔ Hemos registrado su aprobación.' : 'Hemos registrado que rechaza el presupuesto.'}</p>
-        <p>{done === 'APROBADO' ? 'Comenzaremos la reparación y le avisaremos cuando esté lista. Recibirá una confirmación por correo.' : 'No se realizará ninguna reparación. El taller se pondrá en contacto con usted.'}</p>
-      </main>
-    )
-  }
 
   if (v.state !== 'OPEN' && v.state !== 'DECIDED') {
     return <main className="card wide">{head}<p>{MESSAGE[v.state]}</p></main>
@@ -97,7 +73,15 @@ export default function QuoteApproval() {
 
       {error && <p className="error">{error}</p>}
 
-      {v.state === 'OPEN' && <DecisionControls total={q.total} busy={busy} onDecide={decide} />}
+      {v.state === 'OPEN' && (
+        <div className="callout">
+          <p>Para <b>aprobar o rechazar</b> este presupuesto debe iniciar sesión con su usuario. Si todavía no tiene, cree la cuenta con el mismo email al que le llegó este mensaje.</p>
+          <div className="row">
+            <Link className="btn" to={`/login?next=${encodeURIComponent(`/portal/repairs/${v.repair.id}`)}`}>Iniciar sesión</Link>
+            <Link to="/register">Crear cuenta</Link>
+          </div>
+        </div>
+      )}
     </main>
   )
 }

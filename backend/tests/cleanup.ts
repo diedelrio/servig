@@ -26,6 +26,8 @@ export async function cleanup(prisma: PrismaClient, domain: string) {
   await prisma.repairSparePart.deleteMany({ where: { repairId: { in: rIds } } });
   await prisma.diagnosis.deleteMany({ where: { repairId: { in: rIds } } });
   await prisma.repairStatusHistory.deleteMany({ where: { repairId: { in: rIds } } });
+  await prisma.repairViewToken.deleteMany({ where: { repairId: { in: rIds } } });
+  await prisma.publicRequest.deleteMany({ where: { OR: [{ email: { endsWith: domain } }, { repairId: { in: rIds } }] } });
   await prisma.attachment.deleteMany({ where: { repairId: { in: rIds } } });
   await prisma.repair.deleteMany({ where: { id: { in: rIds } } });
   await prisma.tool.deleteMany({ where: { customerId: { in: cIds } } });

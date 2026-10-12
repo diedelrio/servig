@@ -39,7 +39,7 @@ export type EmailInput = {
  * Estos correos llevan un enlace de un solo uso (confirmar cuenta, recuperar contraseña, invitación, aprobar presupuesto).
  * Su cuerpo NO se guarda: quien viera el registro podría usar esos enlaces. Si fallan, la persona los vuelve a solicitar.
  */
-export const SENSITIVE_TYPES = new Set(['AUTH_VERIFY_EMAIL', 'AUTH_PASSWORD_RESET', 'AUTH_INVITE', 'QUOTE_AVAILABLE']);
+export const SENSITIVE_TYPES = new Set(['AUTH_VERIFY_EMAIL', 'AUTH_PASSWORD_RESET', 'AUTH_INVITE', 'QUOTE_AVAILABLE', 'PUBLIC_REQUEST_CONFIRM', 'REPAIR_STATUS_LINK']);
 
 const IMMEDIATE_ATTEMPTS = 3; // dentro del propio envío
 export const MAX_ATTEMPTS = 5; // en total, incluidos los reintentos en segundo plano

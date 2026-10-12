@@ -1,4 +1,5 @@
 import express from 'express';
+import { publicRouter } from './modules/public/routes.js';
 import { getBusiness } from './lib/settings.js';
 import cors from 'cors';
 import helmet from 'helmet';
@@ -84,6 +85,7 @@ app.use('/api/config', configRouter);
 app.use('/api/catalogs', catalogsRouter);
 app.use('/api/email-logs', emailLogsRouter);
 app.use('/api/public/quote-approval', publicQuoteRouter);
+app.use('/api/public', publicRouter);
 
 // Una ruta de API inexistente es un 404 en JSON, nunca la página de la aplicación.
 app.use('/api', (_req, res) => {

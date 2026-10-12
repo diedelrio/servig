@@ -31,8 +31,7 @@ async function api(path: string, opts: { method?: string; body?: object; auth?: 
   return { status: res.status, json: await res.json().catch(() => null) };
 }
 
-async function userWith(role: string) {
-  const email = uniq(role.toLowerCase());
+async function userWith(role: string, email = uniq(role.toLowerCase())) {
   const r = await prisma.role.findUniqueOrThrow({ where: { name: role } });
   const u = await prisma.user.create({
     data: { email, firstName: 'Téc', lastName: role, roleId: r.id, passwordHash: await hashPassword(PW), status: 'ACTIVE', emailVerifiedAt: new Date() },
@@ -49,19 +48,24 @@ const ITEMS = [
   { type: 'PART', description: 'Escobillas', quantity: 2, unitPrice: 10, taxRate: 21 },
 ];
 
+/** Sesión del portal de cada cliente de prueba, por reparación: el enlace del correo ya no decide, se decide con usuario (RN-35). */
+const clientToken = new Map<number, string>();
+
 /** Reparación con presupuesto ENVIADO y su enlace real (extraído del correo, como lo haría el cliente). */
 async function pending(opts: { requiresQuote?: boolean } = {}) {
   const customerEmail = uniq('cli');
+  const account = await userWith('CLIENTE', customerEmail); // la cuenta existe antes: se vincula al crear la ficha (RN-09)
   const c = await api('/api/customers', { method: 'POST', auth: rec.token, body: { name: 'Ana <Cliente>', email: customerEmail, phone: '600123456', address: 'Calle Secreta 1' } });
   const t = await api('/api/tools', { method: 'POST', auth: rec.token, body: { customerId: c.json.id, type: 'Taladro', brand: 'Bosch', model: 'AP1' } });
   const r = await api('/api/repairs', { method: 'POST', auth: rec.token, body: { toolId: t.json.id, declaredFault: 'No gira', visualState: 'Ok', ...opts } });
   const id = r.json.id as number;
+  clientToken.set(id, account.token);
   await api(`/api/repairs/${id}/transition`, { method: 'POST', auth: tec.token, body: { to: 'EN_REVISION' } });
   await api(`/api/repairs/${id}/diagnosis`, { method: 'POST', auth: tec.token, body: { text: 'Visible al cliente', visibleToCustomer: true } });
   await api(`/api/repairs/${id}/diagnosis`, { method: 'POST', auth: tec.token, body: { text: 'SECRETO interno', visibleToCustomer: false } });
   await api(`/api/repairs/${id}/quote`, { method: 'PUT', auth: tec.token, body: { items: ITEMS } });
   await api(`/api/repairs/${id}/quote/send`, { method: 'POST', auth: tec.token });
-  return { id, customerEmail, token: tokenFrom(customerEmail) };
+  return { id, customerEmail, accountId: account.id, token: tokenFrom(customerEmail) };
 }
 
 const tokenFrom = (to: string, nth = -1) => {
@@ -71,8 +75,16 @@ const tokenFrom = (to: string, nth = -1) => {
 };
 
 const view = (token: string) => api(`/api/public/quote-approval/${encodeURIComponent(token)}`);
-const decide = (token: string, decision: string, comment?: string) =>
+/** Lo que hace hoy un enlace: nada (403 si está vigente, o el motivo por el que ya no vale). */
+const linkDecide = (token: string, decision: string, comment?: string) =>
   api(`/api/public/quote-approval/${encodeURIComponent(token)}/decision`, { method: 'POST', body: { decision, comment } });
+/** Decide el cliente con su usuario, desde el portal. El enlace del correo solo identifica la reparación en estos tests. */
+async function decide(token: string, decision: string, comment?: string) {
+  const link = await prisma.quoteLinkToken.findUnique({ where: { tokenHash: hashToken(token) }, include: { version: { include: { quote: true } } } });
+  if (!link) return linkDecide(token, decision, comment); // token inventado: mismo 404 de siempre
+  const auth = clientToken.get(link.version.quote.repairId)!;
+  return api(`/api/portal/repairs/${link.version.quote.repairId}/quote/decision`, { method: 'POST', auth, body: { decision, comment } });
+}
 const statusOf = async (id: number) => (await prisma.repair.findUniqueOrThrow({ where: { id } })).status as RepairStatus;
 const go = (id: number, to: string, who: Staff, comment?: string) =>
   api(`/api/repairs/${id}/transition`, { method: 'POST', auth: who.token, body: { to, comment } });
@@ -129,6 +141,28 @@ describe('enlace y vista pública', () => {
   });
 });
 
+describe('el enlace del correo no decide (RN-35)', () => {
+  it('con el enlace vigente responde 403 LOGIN_REQUIRED y no cambia nada; la vista sigue abierta para leer', async () => {
+    const p = await pending();
+    for (const d of ['APPROVE', 'REJECT']) {
+      const res = await linkDecide(p.token, d);
+      expect(res.status).toBe(403);
+      expect(res.json.code).toBe('LOGIN_REQUIRED');
+    }
+    expect(await statusOf(p.id)).toBe('PRESUPUESTO_PENDIENTE_APROBACION');
+    expect(await prisma.quoteApproval.count({ where: { version: { quote: { repairId: p.id } } } })).toBe(0);
+    const v = await view(p.token);
+    expect(v.json).toMatchObject({ state: 'OPEN', repair: { id: p.id } });
+  });
+
+  it('el correo avisa de que hace falta iniciar sesión', async () => {
+    const p = await pending();
+    const mail = sent.find((m) => m.to === p.customerEmail && m.type === 'QUOTE_AVAILABLE')!;
+    expect(mail.html).toContain('iniciar sesión');
+    expect(mail.html).not.toContain('Ver y aprobar');
+  });
+});
+
 describe('aprobación', () => {
   it('registra la decisión completa y habilita la reparación (RN-01)', async () => {
     const p = await pending();
@@ -140,13 +174,13 @@ describe('aprobación', () => {
 
     const v = await prisma.quoteVersion.findFirstOrThrow({ where: { quote: { repairId: p.id } }, include: { approval: true } });
     expect(v.status).toBe('APROBADO');
-    expect(v.approval).toMatchObject({ decision: 'APROBADO', origin: 'CUSTOMER_LINK', userId: null });
+    expect(v.approval).toMatchObject({ decision: 'APROBADO', origin: 'CUSTOMER_PORTAL', userId: p.accountId });
     expect(v.approval!.ip).toBeTruthy();
     expect(v.approval!.userAgent).toBeTruthy();
     expect(v.approval!.decidedAt.getTime()).toBeGreaterThan(Date.now() - 10_000);
 
     const h = await prisma.repairStatusHistory.findFirstOrThrow({ where: { repairId: p.id, toStatus: 'PRESUPUESTO_APROBADO' } });
-    expect(h).toMatchObject({ fromStatus: 'PRESUPUESTO_PENDIENTE_APROBACION', origin: 'CUSTOMER_LINK', userId: null });
+    expect(h).toMatchObject({ fromStatus: 'PRESUPUESTO_PENDIENTE_APROBACION', origin: 'CUSTOMER_PORTAL', userId: p.accountId });
     expect(await prisma.auditLog.count({ where: { action: 'QUOTE_APPROVED', entityId: String(p.id) } })).toBe(1);
 
     expect((await go(p.id, 'EN_REPARACION', tec)).status).toBe(200); // ahora sí
@@ -198,13 +232,12 @@ describe('rechazo', () => {
 });
 
 describe('un solo uso y carreras', () => {
-  it('el enlace no se puede reutilizar, ni para la misma decisión ni para la contraria', async () => {
+  it('una vez decidido no se puede decidir de nuevo, ni lo mismo ni lo contrario', async () => {
     const p = await pending();
     expect((await decide(p.token, 'APPROVE')).status).toBe(200);
     for (const d of ['APPROVE', 'REJECT']) {
-      const again = await decide(p.token, d);
-      expect(again.status).toBe(409);
-      expect(again.json.code).toBe('ALREADY_DECIDED');
+      for (const again of [await decide(p.token, d), await linkDecide(p.token, d)]) expect(again.status).toBe(409);
+      expect((await linkDecide(p.token, d)).json.code).toBe('ALREADY_DECIDED');
     }
     expect(await statusOf(p.id)).toBe('PRESUPUESTO_APROBADO');
     expect(await prisma.quoteApproval.count({ where: { version: { quote: { repairId: p.id } } } })).toBe(1);
@@ -226,17 +259,17 @@ describe('un solo uso y carreras', () => {
   it('valida el cuerpo: decisión desconocida o faltante', async () => {
     const p = await pending();
     expect((await decide(p.token, 'TAL_VEZ')).status).toBe(400);
-    expect((await api(`/api/public/quote-approval/${p.token}/decision`, { method: 'POST', body: {} })).status).toBe(400);
+    expect((await api(`/api/public/quote-approval/${p.token}/decision`, { method: 'POST', body: {} })).status).toBe(400); // el enlace valida el cuerpo igual
     expect(await statusOf(p.id)).toBe('PRESUPUESTO_PENDIENTE_APROBACION');
   });
 });
 
 describe('enlace vencido, presupuesto vencido o retirado', () => {
-  it('enlace vencido: no decide y pide uno nuevo; el presupuesto sigue vigente', async () => {
+  it('enlace vencido: lo informa y pide uno nuevo; el presupuesto sigue vigente y se decide con usuario', async () => {
     const p = await pending();
     await prisma.quoteLinkToken.updateMany({ where: { version: { quote: { repairId: p.id } } }, data: { expiresAt: new Date(Date.now() - 1000) } });
     expect((await view(p.token)).json.state).toBe('LINK_EXPIRED');
-    const res = await decide(p.token, 'APPROVE');
+    const res = await linkDecide(p.token, 'APPROVE');
     expect(res.status).toBe(409);
     expect(res.json.code).toBe('LINK_EXPIRED');
     expect(await statusOf(p.id)).toBe('PRESUPUESTO_PENDIENTE_APROBACION');
@@ -252,7 +285,7 @@ describe('enlace vencido, presupuesto vencido o retirado', () => {
   it('reenviar el enlace invalida el anterior (aunque no hubiera vencido)', async () => {
     const p = await pending();
     await api(`/api/repairs/${p.id}/quote/resend-link`, { method: 'POST', auth: tec.token });
-    const old = await decide(p.token, 'APPROVE');
+    const old = await linkDecide(p.token, 'APPROVE');
     expect(old.status).toBe(409);
     expect(old.json.code).toBe('LINK_REPLACED');
     expect((await view(p.token)).json.state).toBe('REPLACED');
@@ -263,9 +296,10 @@ describe('enlace vencido, presupuesto vencido o retirado', () => {
     const p = await pending();
     await prisma.quoteVersion.updateMany({ where: { quote: { repairId: p.id } }, data: { validUntil: new Date(Date.now() - 1000) } });
     // sin que haya corrido el barrido: la propia decisión lo detecta
-    const res = await decide(p.token, 'APPROVE');
+    const res = await linkDecide(p.token, 'APPROVE');
     expect(res.status).toBe(409);
     expect(res.json.code).toBe('QUOTE_EXPIRED');
+    expect((await decide(p.token, 'APPROVE')).status).toBe(409); // con usuario tampoco
     expect((await view(p.token)).json.state).toBe('EXPIRED');
     expect(await statusOf(p.id)).toBe('PRESUPUESTO_PENDIENTE_APROBACION');
     await expireDueQuotes(); // idempotente: no cambia nada que ya estuviera marcado
@@ -276,14 +310,14 @@ describe('enlace vencido, presupuesto vencido o retirado', () => {
     const p = await pending();
     await api(`/api/repairs/${p.id}/quote/withdraw`, { method: 'POST', auth: tec.token, body: { comment: 'Error de precio' } });
     expect((await view(p.token)).json.state).toBe('WITHDRAWN');
-    const res = await decide(p.token, 'APPROVE');
+    const res = await linkDecide(p.token, 'APPROVE');
     expect(res.status).toBe(409);
     expect(res.json.code).toBe('QUOTE_WITHDRAWN');
     expect((await view(p.token)).json.quote).toBeUndefined(); // no muestra importes obsoletos
 
     await api(`/api/repairs/${p.id}/quote/new-version`, { method: 'POST', auth: tec.token });
     await api(`/api/repairs/${p.id}/quote/send`, { method: 'POST', auth: tec.token });
-    expect((await decide(p.token, 'APPROVE')).status).toBe(409); // el viejo sigue sin valer
+    expect((await linkDecide(p.token, 'APPROVE')).status).toBe(409); // el viejo sigue sin valer
     expect((await decide(tokenFrom(p.customerEmail), 'APPROVE')).status).toBe(200);
   });
 });
@@ -313,7 +347,7 @@ describe('RN-01 y límites', () => {
     await decide(p.token, 'REJECT', 'No me interesa');
     const q = await api(`/api/repairs/${p.id}/quote`, { auth: rec.token });
     const approval = q.json.quote.versions[0].approval;
-    expect(approval).toMatchObject({ decision: 'RECHAZADO', origin: 'CUSTOMER_LINK', comment: 'No me interesa' });
+    expect(approval).toMatchObject({ decision: 'RECHAZADO', origin: 'CUSTOMER_PORTAL', comment: 'No me interesa' });
     expect(approval.ip).toBeTruthy();
     expect(approval.decidedAt).toBeTruthy();
   });

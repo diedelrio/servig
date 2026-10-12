@@ -68,7 +68,7 @@ export default function Receipt() {
   if (!r) return <p>Cargando…</p>
   return (
     <ReceiptView backTo={`/repairs/${r.id}`} data={{
-      number: r.number, receivedAt: r.receivedAt, receivedBy: `${r.receivedBy.firstName} ${r.receivedBy.lastName}`,
+      number: r.number, receivedAt: r.receivedAt, receivedBy: r.receivedBy ? `${r.receivedBy.firstName} ${r.receivedBy.lastName}` : undefined,
       customer: { name: r.customer.name, taxId: r.customer.taxId, contact: [r.customer.phone, r.customer.email, r.customer.address].filter(Boolean).join(' · ') || '—' },
       tool: r.tool, declaredFault: r.declaredFault, visualState: r.visualState, accessories: r.accessories, notes: r.notes,
       inWarranty: r.inWarranty, warrantyExpiresAt: r.tool.warrantyExpiresAt, business: r.business,

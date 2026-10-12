@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { HttpError, validate } from '../../lib/http.js';
 import { requireAuth, requirePermission } from '../../middleware/auth.js';
 import * as s from './service.js';
-import { createRepairSchema, transitionSchema } from './schemas.js';
+import { accountingReceiptSchema, createRepairSchema, transitionSchema } from './schemas.js';
 import { transitionRepair } from './workflow.js';
 import { diagnosisSchema } from '../quotes/schemas.js';
 import { sendAttachment } from '../../lib/download.js';
@@ -39,6 +39,10 @@ repairsRouter.post('/:id/transition', requirePermission('repair:transition'), va
       : undefined,
   });
   res.json(repair);
+});
+
+repairsRouter.put('/:id/accounting-receipt', requirePermission('repair:accounting'), validate(accountingReceiptSchema), async (req, res) => {
+  res.json(await s.setAccountingReceipt(req.user!.id, num(req.params.id), req.body.number));
 });
 
 repairsRouter.post('/:id/diagnosis', requirePermission('diagnosis:create'), validate(diagnosisSchema), async (req, res) => {

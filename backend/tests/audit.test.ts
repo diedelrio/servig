@@ -212,6 +212,10 @@ describe('cobertura: el ciclo completo deja rastro de cada operación importante
 
     // cliente + herramienta + reparación
     const email = uniq('ciclo');
+    // El cliente decide con su usuario (RN-35): la cuenta existe antes y se vincula al crear la ficha.
+    const clientRole = await prisma.role.findUniqueOrThrow({ where: { name: 'CLIENTE' } });
+    await prisma.user.create({ data: { email, firstName: 'C', lastName: 'L', roleId: clientRole.id, passwordHash: await hashPassword(PW), status: 'ACTIVE', emailVerifiedAt: new Date() } });
+    const cliToken = (await api('/api/auth/login', { method: 'POST', body: { email, password: PW } })).json.accessToken as string;
     const c = await api('/api/customers', { method: 'POST', auth: rec.token, body: { name: 'Ciclo', email } });
     await api(`/api/customers/${c.json.id}`, { method: 'PATCH', auth: rec.token, body: { phone: '600' } });
     const t = await api('/api/tools', { method: 'POST', auth: rec.token, body: { customerId: c.json.id, type: 'T', brand: 'B', model: 'M' } });
@@ -228,8 +232,7 @@ describe('cobertura: el ciclo completo deja rastro de cada operación importante
     await api(`/api/repairs/${id}/quote`, { method: 'PUT', auth: tec.token, body: { items: [{ type: 'PART', description: 'x', quantity: 2, unitPrice: 5, taxRate: 21 }] } });
     await api(`/api/repairs/${id}/quote/send`, { method: 'POST', auth: tec.token });
     await api(`/api/repairs/${id}/quote/resend-link`, { method: 'POST', auth: tec.token });
-    const token = decodeURIComponent(sent.filter((m) => m.to === email && m.type === 'QUOTE_AVAILABLE').at(-1)!.html.match(/quote-approval\?token=([^"]+)"/)![1]);
-    await api(`/api/public/quote-approval/${encodeURIComponent(token)}/decision`, { method: 'POST', body: { decision: 'APPROVE' } });
+    await api(`/api/portal/repairs/${id}/quote/decision`, { method: 'POST', auth: cliToken, body: { decision: 'APPROVE' } });
     const part = await api(`/api/repairs/${id}/spare-parts`, { method: 'POST', auth: tec.token, body: { description: 'Rep', quantity: 1, cost: 1, price: 2 } });
     await api(`/api/spare-parts/${part.json.id}`, { method: 'PATCH', auth: tec.token, body: { quantity: 2 } });
     await api(`/api/spare-parts/${part.json.id}/status`, { method: 'POST', auth: tec.token, body: { to: 'CANCELADO' } });
@@ -246,7 +249,8 @@ describe('cobertura: el ciclo completo deja rastro de cada operación importante
       .map((a) => ({ to: (a.data as { to: string }).to, by: a.userId }));
     expect(changes.map((x) => x.to)).toEqual(['EN_REVISION', 'PRESUPUESTO_PENDIENTE_APROBACION', 'PRESUPUESTO_APROBADO', 'EN_REPARACION', 'REPARADO', 'LISTO_PARA_RETIRAR', 'ENTREGADO']);
     expect(changes.at(-1)!.by).toBe(rec.id);
-    expect(changes.find((x) => x.to === 'PRESUPUESTO_APROBADO')!.by).toBeNull(); // lo decidió el cliente, no el personal
+    expect(changes.find((x) => x.to === 'PRESUPUESTO_APROBADO')!.by).toBeTruthy(); // lo decidió el cliente con su usuario (RN-35), no el personal
+    expect([tec.id, rec.id, adm.id]).not.toContain(changes.find((x) => x.to === 'PRESUPUESTO_APROBADO')!.by);
 
     // y la consulta por entidad devuelve el historial completo para la pantalla del ADMIN
     const viaApi = await audit(`entity=Repair&entityId=${id}&limit=200`);

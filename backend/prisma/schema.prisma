@@ -152,22 +152,22 @@ model Customer {
 }
 
 model Tool {
-  id                Int       @id @default(autoincrement())
+  id                Int        @id @default(autoincrement())
   customerId        Int
-  customer          Customer  @relation(fields: [customerId], references: [id])
+  customer          Customer   @relation(fields: [customerId], references: [id])
   type              String
   brand             String
   model             String
   serialNumber      String?
-  purchaseDate      DateTime? @db.Date
-  warrantyExpiresAt DateTime? @db.Date
+  purchaseDate      DateTime?  @db.Date
+  warrantyExpiresAt DateTime?  @db.Date
   description       String?
   notes             String?
   // Catálogo (opcional: type/brand/model siguen siendo la copia legible que ven correos, resguardos y búsquedas).
   modelId           Int?
   catalogModel      ToolModel? @relation(fields: [modelId], references: [id])
-  createdAt         DateTime  @default(now())
-  updatedAt         DateTime  @updatedAt
+  createdAt         DateTime   @default(now())
+  updatedAt         DateTime   @updatedAt
 
   repairs Repair[]
 
@@ -232,34 +232,39 @@ model Counter {
 }
 
 model Repair {
-  id            Int          @id @default(autoincrement())
-  number        String       @unique
-  customerId    Int
-  customer      Customer     @relation(fields: [customerId], references: [id])
-  toolId        Int
-  tool          Tool         @relation(fields: [toolId], references: [id])
-  receivedAt    DateTime     @default(now())
-  declaredFault String
-  visualState   String
-  accessories   String?
-  inWarranty    Boolean      @default(false)
-  requiresQuote Boolean      @default(true)
-  notes         String?
-  status        RepairStatus @default(RECIBIDO)
-  receivedById  Int
-  receivedBy    User         @relation(fields: [receivedById], references: [id])
-  createdAt     DateTime     @default(now())
-  updatedAt     DateTime     @updatedAt
+  id                Int          @id @default(autoincrement())
+  number            String       @unique
+  customerId        Int
+  customer          Customer     @relation(fields: [customerId], references: [id])
+  toolId            Int
+  tool              Tool         @relation(fields: [toolId], references: [id])
+  receivedAt        DateTime     @default(now())
+  declaredFault     String
+  visualState       String
+  accessories       String?
+  inWarranty        Boolean      @default(false)
+  requiresQuote     Boolean      @default(true)
+  notes             String?
+  status            RepairStatus @default(RECIBIDO)
+  // Nulo en las solicitudes hechas desde la web pública (no hay usuario del taller ni del portal).
+  receivedById      Int?
+  receivedBy        User?        @relation(fields: [receivedById], references: [id])
+  /// Nº de resguardo del sistema contable, escrito a mano por el personal para relacionar ambos sistemas.
+  accountingReceipt String?      @db.VarChar(40)
+  createdAt         DateTime     @default(now())
+  updatedAt         DateTime     @updatedAt
 
   history     RepairStatusHistory[]
   attachments Attachment[]
   diagnoses   Diagnosis[]
   quote       Quote?
   spareParts  RepairSparePart[]
+  viewTokens  RepairViewToken[]
 
   @@index([customerId])
   @@index([toolId])
   @@index([status])
+  @@index([accountingReceipt])
 }
 
 /// Solo se inserta: nunca se edita ni se borra.
@@ -435,6 +440,41 @@ model RepairSparePart {
   createdBy   User            @relation(fields: [createdById], references: [id])
   createdAt   DateTime        @default(now())
   updatedAt   DateTime        @updatedAt
+
+  @@index([repairId])
+}
+
+/// Solicitud hecha desde la web pública, pendiente de que el dueño del email la confirme. Al confirmarla se crea la reparación.
+model PublicRequest {
+  id            Int       @id @default(autoincrement())
+  email         String    @db.VarChar(254)
+  name          String    @db.VarChar(150)
+  phone         String?   @db.VarChar(40)
+  modelId       Int? // modelo elegido del catálogo (si lo hubo)
+  type          String    @db.VarChar(80)
+  brand         String    @db.VarChar(80)
+  model         String    @db.VarChar(80)
+  serialNumber  String?   @db.VarChar(80)
+  declaredFault String    @db.VarChar(2000)
+  notes         String?   @db.VarChar(2000)
+  tokenHash     String    @unique
+  expiresAt     DateTime
+  confirmedAt   DateTime?
+  repairId      Int?
+  ip            String?   @db.VarChar(64)
+  createdAt     DateTime  @default(now())
+
+  @@index([email])
+}
+
+/// Enlace temporal de solo lectura para consultar el estado de una reparación sin cuenta. Solo se guarda el hash.
+model RepairViewToken {
+  id        Int      @id @default(autoincrement())
+  repairId  Int
+  repair    Repair   @relation(fields: [repairId], references: [id])
+  tokenHash String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
 
   @@index([repairId])
 }

@@ -25,3 +25,8 @@ export const transitionSchema = z.object({
   // Solo al registrar la recepción de una solicitud del cliente: lo que se observa al tener la herramienta delante.
   reception: z.object({ visualState: z.string().trim().min(1, 'Describe el estado visual').max(1000), accessories: z.string().trim().max(1000).optional() }).optional(),
 });
+
+// Texto libre del sistema contable; vacío = quitarlo.
+export const accountingReceiptSchema = z.object({
+  number: z.string().trim().max(40, 'Máximo 40 caracteres').transform((v) => v || null).nullable(),
+});

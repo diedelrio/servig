@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import { Navigate } from 'react-router-dom'
+import { Navigate, useLocation } from 'react-router-dom'
 import { useAuth } from './auth'
 import { AdminShell } from './layout/AdminShell'
 import { ClientShell } from './layout/ClientShell'
@@ -10,8 +10,9 @@ import { ClientShell } from './layout/ClientShell'
  */
 export function AppLayout({ permission, role, children }: { permission?: string; role?: string; children: ReactNode }) {
   const { user, loading, can } = useAuth()
+  const { pathname, search } = useLocation()
   if (loading) return <p className="center">Cargando…</p>
-  if (!user) return <Navigate to="/login" replace />
+  if (!user) return <Navigate to={`/login?next=${encodeURIComponent(pathname + search)}`} replace />
   if (permission && !can(permission)) return <Navigate to="/" replace />
   if (role && user.role !== role) return <Navigate to="/" replace />
   return user.role === 'CLIENTE' ? <ClientShell>{children}</ClientShell> : <AdminShell>{children}</AdminShell>
